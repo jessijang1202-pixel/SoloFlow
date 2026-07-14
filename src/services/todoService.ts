@@ -14,6 +14,7 @@ export interface Task {
   isWeeklyGoal: boolean;
   isMonthlyGoal?: boolean;
   order: number;
+  synced?: boolean;
 }
 
 const LOCAL_STORAGE_KEY = 'soloflow_tasks';
@@ -25,6 +26,8 @@ export const getTodayString = (): string => {
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
+
+let hasMonthlyGoalColumn = true;
 
 export const todoService = {
   getTasks(): Task[] {
@@ -49,6 +52,7 @@ export const todoService = {
       completedAt: null,
       rolledOverFrom: null,
       order: newOrder,
+      synced: false,
     };
 
     tasks.push(newTask);
@@ -59,9 +63,9 @@ export const todoService = {
 
   updateTask(updatedTask: Task): Task[] {
     const tasks = this.getTasks();
-    const newTasks = tasks.map(t => t.id === updatedTask.id ? updatedTask : t);
+    const newTasks = tasks.map(t => t.id === updatedTask.id ? { ...updatedTask, synced: false } : t);
     this.saveTasks(newTasks);
-    this.saveTaskToSupabase(updatedTask);
+    this.saveTaskToSupabase({ ...updatedTask, synced: false });
     return newTasks;
   },
 
@@ -90,6 +94,7 @@ export const todoService = {
           ...t,
           status: nextStatus,
           completedAt: nextStatus === 'done' ? new Date().toISOString() : null,
+          synced: false,
         };
       }
       return t;
@@ -119,6 +124,7 @@ export const todoService = {
             status: 'rollover' as const,
             rolledOverFrom: task.rolledOverFrom || task.dueDate, // Keep track of the original due date
             dueDate: todayStr, // Update due date to today
+            synced: false,
           };
         }
         return task;
@@ -153,6 +159,7 @@ export const todoService = {
         return {
           ...t,
           order: idToOrderMap.get(t.id)!,
+          synced: false,
         };
       }
       return t;
@@ -192,44 +199,74 @@ export const todoService = {
         isWeeklyGoal: item.is_weekly_goal,
         isMonthlyGoal: item.is_monthly_goal || false,
         order: item.order || 0,
+        synced: true,
       }));
 
       // Merging: combine local and remote using task ID as key
       const mergedMap = new Map<string, Task>();
-      localTasks.forEach(t => mergedMap.set(t.id, t));
-      
-      let remoteHasNew = false;
-      let localHasNew = false;
-
-      remoteTasks.forEach(t => {
-        if (!mergedMap.has(t.id)) {
-          remoteHasNew = true;
-          mergedMap.set(t.id, t);
-        } else {
-          // If remote is different, overwrite local
-          const local = mergedMap.get(t.id)!;
-          if (JSON.stringify(local) !== JSON.stringify(t)) {
-            mergedMap.set(t.id, t);
-          }
-        }
+      remoteTasks.forEach(rt => {
+        mergedMap.set(rt.id, rt);
       });
+      
+      let localHasNew = false;
+      let hasChanges = false;
 
-      // Upload local tasks that remote doesn't have yet
-      for (const t of localTasks) {
-        if (!remoteTasks.some(rt => rt.id === t.id)) {
-          localHasNew = true;
-          await this.saveTaskToSupabase(t);
+      // Process local tasks
+      for (const lt of localTasks) {
+        if (!mergedMap.has(lt.id)) {
+          // If local task is not in remote database
+          if (lt.synced) {
+            // Previously synced, so it was deleted on another client
+            hasChanges = true;
+          } else {
+            // New local task, upload it
+            mergedMap.set(lt.id, lt);
+            localHasNew = true;
+            await this.saveTaskToSupabase(lt);
+          }
+        } else {
+          // Task exists in both. Compare fields (excluding synced flag)
+          const rt = mergedMap.get(lt.id)!;
+          
+          // Helper to normalize objects for comparison
+          const normalize = (t: Task) => ({
+            id: t.id,
+            title: t.title,
+            category: t.category,
+            dueDate: t.dueDate,
+            priority: t.priority,
+            status: t.status,
+            createdAt: t.createdAt,
+            completedAt: t.completedAt,
+            rolledOverFrom: t.rolledOverFrom,
+            note: t.note,
+            isWeeklyGoal: t.isWeeklyGoal,
+            isMonthlyGoal: t.isMonthlyGoal,
+            order: t.order,
+          });
+
+          if (JSON.stringify(normalize(lt)) !== JSON.stringify(normalize(rt))) {
+            // Remote changes win, but ensure they are saved to local storage
+            hasChanges = true;
+          }
         }
       }
 
+      // Check if remote had tasks that local did not have
+      remoteTasks.forEach(rt => {
+        if (!localTasks.some(lt => lt.id === rt.id)) {
+          hasChanges = true;
+        }
+      });
+
       const mergedList = Array.from(mergedMap.values());
-      if (remoteHasNew || localHasNew) {
+      if (hasChanges || localHasNew) {
         this.saveTasks(mergedList);
       }
       
       return mergedList;
-    } catch (err) {
-      console.error('Failed to sync tasks with Supabase:', err);
+    } catch (err: any) {
+      console.error('Failed to sync tasks with Supabase:', err?.message, err?.details, err?.hint, err);
     }
     return this.getTasks();
   },
@@ -237,26 +274,47 @@ export const todoService = {
   async saveTaskToSupabase(task: Task) {
     if (!supabase) return;
     try {
+      const payload: any = {
+        id: task.id,
+        title: task.title,
+        category_id: task.category || null,
+        due_date: task.dueDate,
+        priority: task.priority,
+        status: task.status,
+        created_at: task.createdAt,
+        completed_at: task.completedAt,
+        rolled_over_from: task.rolledOverFrom,
+        note: task.note || '',
+        is_weekly_goal: task.isWeeklyGoal,
+        order: task.order,
+      };
+
+      if (hasMonthlyGoalColumn) {
+        payload.is_monthly_goal = task.isMonthlyGoal || false;
+      }
+
       const { error } = await supabase
         .from('todos')
-        .upsert({
-          id: task.id,
-          title: task.title,
-          category_id: task.category || null,
-          due_date: task.dueDate,
-          priority: task.priority,
-          status: task.status,
-          created_at: task.createdAt,
-          completed_at: task.completedAt,
-          rolled_over_from: task.rolledOverFrom,
-          note: task.note || '',
-          is_weekly_goal: task.isWeeklyGoal,
-          is_monthly_goal: task.isMonthlyGoal || false,
-          order: task.order,
-        });
-      if (error) throw error;
-    } catch (err) {
-      console.error('Failed to save task to Supabase:', err);
+        .upsert(payload);
+
+      if (error) {
+        if (error.message && error.message.includes('is_monthly_goal')) {
+          console.warn('Supabase todos table is missing is_monthly_goal column. Retrying without it.');
+          hasMonthlyGoalColumn = false;
+          delete payload.is_monthly_goal;
+          const { error: retryError } = await supabase.from('todos').upsert(payload);
+          if (retryError) throw retryError;
+        } else {
+          throw error;
+        }
+      }
+
+      // Update local storage to mark as synced
+      const tasks = this.getTasks();
+      const updated = tasks.map(t => t.id === task.id ? { ...t, synced: true } : t);
+      this.saveTasks(updated);
+    } catch (err: any) {
+      console.error('Failed to save task to Supabase:', err?.message, err?.details, err?.hint, err);
     }
   },
 

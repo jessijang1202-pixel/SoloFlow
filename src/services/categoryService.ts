@@ -17,6 +17,7 @@ export interface Category {
   isProject?: boolean;
   description?: string;
   milestones?: Milestone[];
+  synced?: boolean;
 }
 
 const DEFAULT_CATEGORIES: Category[] = [
@@ -62,6 +63,7 @@ export const categoryService = {
       isProject,
       description,
       milestones: [],
+      synced: false,
     };
     categories.push(newCategory);
     this.saveCategories(categories);
@@ -79,6 +81,7 @@ export const categoryService = {
             color,
             isProject: isProject !== undefined ? isProject : cat.isProject,
             description: description !== undefined ? description : cat.description,
+            synced: false,
           }
         : cat
     );
@@ -106,6 +109,7 @@ export const categoryService = {
           isProject,
           description: isProject ? description || cat.description || '' : '',
           milestones: isProject ? cat.milestones || [] : [],
+          synced: false,
         };
       }
       return cat;
@@ -123,6 +127,7 @@ export const categoryService = {
         return {
           ...cat,
           milestones,
+          synced: false,
         };
       }
       return cat;
@@ -149,6 +154,7 @@ export const categoryService = {
         return {
           ...cat,
           milestones: [...milestones, newMilestone].sort((a, b) => a.targetDate.localeCompare(b.targetDate)),
+          synced: false,
         };
       }
       return cat;
@@ -167,6 +173,7 @@ export const categoryService = {
         return {
           ...cat,
           milestones: (cat.milestones || []).filter(ms => ms.id !== milestoneId),
+          synced: false,
         };
       }
       return cat;
@@ -195,6 +202,7 @@ export const categoryService = {
         return {
           ...cat,
           milestones: milestones.sort((a, b) => a.targetDate.localeCompare(b.targetDate)),
+          synced: false,
         };
       }
       return cat;
@@ -292,43 +300,68 @@ export const categoryService = {
         isProject: item.is_project,
         description: item.description || '',
         milestones: item.milestones || [],
+        synced: true,
       }));
 
       // Merging: combine local and remote using category ID as key
       const mergedMap = new Map<string, Category>();
-      localCats.forEach(c => mergedMap.set(c.id, c));
+      remoteCats.forEach(rc => {
+        mergedMap.set(rc.id, rc);
+      });
 
-      let remoteHasNew = false;
       let localHasNew = false;
+      let hasChanges = false;
 
-      remoteCats.forEach(c => {
-        if (!mergedMap.has(c.id)) {
-          remoteHasNew = true;
-          mergedMap.set(c.id, c);
-        } else {
-          // If remote is different, overwrite local
-          const local = mergedMap.get(c.id)!;
-          if (JSON.stringify(local) !== JSON.stringify(c)) {
-            mergedMap.set(c.id, c);
+      // Process local categories
+      for (const lc of localCats) {
+        if (!mergedMap.has(lc.id)) {
+          // If local category is not in remote database
+          if (lc.isSystem) {
+            // Keep system categories
+            mergedMap.set(lc.id, lc);
+          } else if (lc.synced) {
+            // Previously synced, so it was deleted on another client
+            hasChanges = true;
+          } else {
+            // New local category, upload it
+            mergedMap.set(lc.id, lc);
+            localHasNew = true;
+            await this.saveCategoryToSupabase(lc);
           }
+        } else {
+          // Category exists in both. Compare fields (excluding synced flag)
+          const rc = mergedMap.get(lc.id)!;
+          
+          const normalize = (c: Category) => ({
+            id: c.id,
+            name: c.name,
+            color: c.color,
+            isSystem: c.isSystem,
+            isProject: c.isProject,
+            description: c.description,
+            milestones: c.milestones,
+          });
+
+          if (JSON.stringify(normalize(lc)) !== JSON.stringify(normalize(rc))) {
+            hasChanges = true;
+          }
+        }
+      }
+
+      // Check if remote had categories that local did not have
+      remoteCats.forEach(rc => {
+        if (!localCats.some(lc => lc.id === rc.id)) {
+          hasChanges = true;
         }
       });
 
-      // Upload local categories that remote doesn't have yet
-      for (const c of localCats) {
-        if (!remoteCats.some(rc => rc.id === c.id)) {
-          localHasNew = true;
-          await this.saveCategoryToSupabase(c);
-        }
-      }
-
       const mergedList = Array.from(mergedMap.values());
-      if (remoteHasNew || localHasNew) {
+      if (hasChanges || localHasNew) {
         this.saveCategories(mergedList);
       }
       return mergedList;
-    } catch (err) {
-      console.error('Failed to sync categories with Supabase:', err);
+    } catch (err: any) {
+      console.error('Failed to sync categories with Supabase:', err?.message, err?.details, err?.hint, err);
     }
     return this.getCategories();
   },
@@ -348,8 +381,13 @@ export const categoryService = {
           milestones: cat.milestones || [],
         });
       if (error) throw error;
-    } catch (err) {
-      console.error('Failed to save category to Supabase:', err);
+
+      // Update local storage to mark as synced
+      const categories = this.getCategories();
+      const updated = categories.map(c => c.id === cat.id ? { ...c, synced: true } : c);
+      this.saveCategories(updated);
+    } catch (err: any) {
+      console.error('Failed to save category to Supabase:', err?.message, err?.details, err?.hint, err);
     }
   },
 
