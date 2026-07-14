@@ -98,6 +98,9 @@ body {
   font-family: var(--font-sans);
   background-color: #000000; /* Outer background */
   color: var(--text-primary);
+}
+
+#root {
   display: flex;
   justify-content: center;
   align-items: center;

@@ -1,3 +1,5 @@
+import { supabase } from './supabaseClient';
+
 export interface Milestone {
   id: string;
   title: string;          // Milestone stage name (e.g., UI Design, Prototype)
@@ -63,6 +65,7 @@ export const categoryService = {
     };
     categories.push(newCategory);
     this.saveCategories(categories);
+    this.saveCategoryToSupabase(newCategory);
     return newCategory;
   },
 
@@ -80,6 +83,8 @@ export const categoryService = {
         : cat
     );
     this.saveCategories(categories);
+    const updated = categories.find(c => c.id === id);
+    if (updated) this.saveCategoryToSupabase(updated);
     return categories;
   },
 
@@ -87,6 +92,7 @@ export const categoryService = {
     let categories = this.getCategories();
     categories = categories.filter((cat) => cat.id !== id || cat.isSystem);
     this.saveCategories(categories);
+    this.deleteCategoryFromSupabase(id);
     return categories;
   },
 
@@ -105,6 +111,8 @@ export const categoryService = {
       return cat;
     });
     this.saveCategories(updated);
+    const updatedCat = updated.find(c => c.id === id);
+    if (updatedCat) this.saveCategoryToSupabase(updatedCat);
     return updated;
   },
 
@@ -129,6 +137,8 @@ export const categoryService = {
       return cat;
     });
     this.saveCategories(updated);
+    const updatedCat = updated.find(c => c.id === categoryId);
+    if (updatedCat) this.saveCategoryToSupabase(updatedCat);
     return updated;
   },
 
@@ -145,6 +155,8 @@ export const categoryService = {
       return cat;
     });
     this.saveCategories(updated);
+    const updatedCat = updated.find(c => c.id === categoryId);
+    if (updatedCat) this.saveCategoryToSupabase(updatedCat);
     return updated;
   },
 
@@ -171,6 +183,8 @@ export const categoryService = {
       return cat;
     });
     this.saveCategories(updated);
+    const updatedCat = updated.find(c => c.id === categoryId);
+    if (updatedCat) this.saveCategoryToSupabase(updatedCat);
     return updated;
   },
 
@@ -236,5 +250,66 @@ export const categoryService = {
       { title: '단계 4: 베타 테스트 및 버그 대대적 수집', targetDate: getOffsetDate(27), note: '동작 점검 및 로컬 스토리지 데이터 무결성 체크' },
       { title: '단계 5: 최종 론칭 및 유저 홍보 개시', targetDate: getOffsetDate(35), note: '앱마켓 등록 및 SNS 마케팅 홍보' },
     ];
+  },
+
+  async syncWithSupabase(): Promise<Category[]> {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*');
+      if (error) throw error;
+      if (data && data.length > 0) {
+        const mapped: Category[] = data.map(item => ({
+          id: item.id,
+          name: item.name,
+          color: item.color,
+          isSystem: item.is_system,
+          isProject: item.is_project,
+          description: item.description || '',
+          milestones: item.milestones || [],
+        }));
+        this.saveCategories(mapped);
+        return mapped;
+      } else {
+        const current = this.getCategories();
+        for (const cat of current) {
+          await this.saveCategoryToSupabase(cat);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to sync categories with Supabase:', err);
+    }
+    return this.getCategories();
+  },
+
+  async saveCategoryToSupabase(cat: Category) {
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .upsert({
+          id: cat.id,
+          name: cat.name,
+          color: cat.color,
+          is_system: cat.isSystem,
+          is_project: cat.isProject || false,
+          description: cat.description || '',
+          milestones: cat.milestones || [],
+        });
+      if (error) throw error;
+    } catch (err) {
+      console.error('Failed to save category to Supabase:', err);
+    }
+  },
+
+  async deleteCategoryFromSupabase(id: string) {
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    } catch (err) {
+      console.error('Failed to delete category from Supabase:', err);
+    }
   }
 };

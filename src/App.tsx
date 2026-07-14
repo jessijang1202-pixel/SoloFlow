@@ -33,11 +33,11 @@ function App() {
 
   // 2. Initial Setup: Load categories, tasks and check for Auto-Rollover
   useEffect(() => {
-    // A. Load Categories
+    // A. Load Categories (Local First)
     const loadedCategories = categoryService.getCategories();
     setCategories(loadedCategories);
 
-    // B. Check for Auto-Rollover and load tasks
+    // B. Check for Auto-Rollover and load tasks (Local First)
     const { tasks: rolledOverTasks, rolloverCount } = todoService.checkAndRolloverTasks();
     setTasks(rolledOverTasks);
 
@@ -49,6 +49,21 @@ function App() {
         );
       }, 600);
     }
+
+    // D. Sync with remote Supabase database in background
+    const syncDatabase = async () => {
+      try {
+        const syncedCats = await categoryService.syncWithSupabase();
+        setCategories(syncedCats);
+
+        const syncedTasks = await todoService.syncWithSupabase();
+        setTasks(syncedTasks);
+      } catch (err) {
+        console.error('Initial database sync failed:', err);
+      }
+    };
+
+    syncDatabase();
   }, []);
 
   // --- Task Handlers ---

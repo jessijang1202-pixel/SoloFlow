@@ -1,3 +1,5 @@
+import { supabase } from './supabaseClient';
+
 export interface Task {
   id: string;
   title: string;
@@ -50,6 +52,7 @@ export const todoService = {
 
     tasks.push(newTask);
     this.saveTasks(tasks);
+    this.saveTaskToSupabase(newTask);
     return newTask;
   },
 
@@ -57,6 +60,7 @@ export const todoService = {
     const tasks = this.getTasks();
     const newTasks = tasks.map(t => t.id === updatedTask.id ? updatedTask : t);
     this.saveTasks(newTasks);
+    this.saveTaskToSupabase(updatedTask);
     return newTasks;
   },
 
@@ -64,6 +68,7 @@ export const todoService = {
     const tasks = this.getTasks();
     const newTasks = tasks.filter(t => t.id !== id);
     this.saveTasks(newTasks);
+    this.deleteTaskFromSupabase(id);
     return newTasks;
   },
 
@@ -90,6 +95,8 @@ export const todoService = {
     });
 
     this.saveTasks(newTasks);
+    const updated = newTasks.find(t => t.id === id);
+    if (updated) this.saveTaskToSupabase(updated);
     return { tasks: newTasks, completedCount };
   },
 
@@ -118,6 +125,11 @@ export const todoService = {
 
       if (rolloverCount > 0) {
         this.saveTasks(updatedTasks);
+        updatedTasks.forEach((task, idx) => {
+          if (task !== tasks[idx]) {
+            this.saveTaskToSupabase(task);
+          }
+        });
       }
       localStorage.setItem('soloflow_last_opened_date', todayStr);
       return { tasks: rolloverCount > 0 ? updatedTasks : tasks, rolloverCount };
@@ -146,7 +158,83 @@ export const todoService = {
     });
 
     this.saveTasks(newTasks);
+    newTasks.forEach((t, idx) => {
+      if (t.order !== tasks[idx].order) {
+        this.saveTaskToSupabase(t);
+      }
+    });
     return newTasks;
+  },
+
+  async syncWithSupabase(): Promise<Task[]> {
+    try {
+      const { data, error } = await supabase
+        .from('todos')
+        .select('*');
+      if (error) throw error;
+      if (data && data.length > 0) {
+        const mapped: Task[] = data.map(item => ({
+          id: item.id,
+          title: item.title,
+          category: item.category_id || '',
+          dueDate: item.due_date,
+          priority: item.priority as 'high' | 'medium' | 'low',
+          status: item.status as 'todo' | 'done' | 'rollover',
+          createdAt: item.created_at,
+          completedAt: item.completed_at,
+          rolledOverFrom: item.rolled_over_from,
+          note: item.note || '',
+          isWeeklyGoal: item.is_weekly_goal,
+          order: item.order || 0,
+        }));
+        this.saveTasks(mapped);
+        return mapped;
+      } else {
+        const current = this.getTasks();
+        for (const t of current) {
+          await this.saveTaskToSupabase(t);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to sync tasks with Supabase:', err);
+    }
+    return this.getTasks();
+  },
+
+  async saveTaskToSupabase(task: Task) {
+    try {
+      const { error } = await supabase
+        .from('todos')
+        .upsert({
+          id: task.id,
+          title: task.title,
+          category_id: task.category || null,
+          due_date: task.dueDate,
+          priority: task.priority,
+          status: task.status,
+          created_at: task.createdAt,
+          completed_at: task.completedAt,
+          rolled_over_from: task.rolledOverFrom,
+          note: task.note || '',
+          is_weekly_goal: task.isWeeklyGoal,
+          order: task.order,
+        });
+      if (error) throw error;
+    } catch (err) {
+      console.error('Failed to save task to Supabase:', err);
+    }
+  },
+
+  async deleteTaskFromSupabase(id: string) {
+    try {
+      const { error } = await supabase
+        .from('todos')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    } catch (err) {
+      console.error('Failed to delete task from Supabase:', err);
+    }
   }
 };
 
