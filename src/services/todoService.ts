@@ -169,7 +169,6 @@ export const todoService = {
 
   async syncWithSupabase(): Promise<Task[]> {
     if (!supabase) {
-      console.warn('Supabase is not configured. Falling back to localStorage.');
       return this.getTasks();
     }
     try {
@@ -177,30 +176,58 @@ export const todoService = {
         .from('todos')
         .select('*');
       if (error) throw error;
-      if (data && data.length > 0) {
-        const mapped: Task[] = data.map(item => ({
-          id: item.id,
-          title: item.title,
-          category: item.category_id || '',
-          dueDate: item.due_date,
-          priority: item.priority as 'high' | 'medium' | 'low',
-          status: item.status as 'todo' | 'done' | 'rollover',
-          createdAt: item.created_at,
-          completedAt: item.completed_at,
-          rolledOverFrom: item.rolled_over_from,
-          note: item.note || '',
-          isWeeklyGoal: item.is_weekly_goal,
-          isMonthlyGoal: item.is_monthly_goal || false,
-          order: item.order || 0,
-        }));
-        this.saveTasks(mapped);
-        return mapped;
-      } else {
-        const current = this.getTasks();
-        for (const t of current) {
+      
+      const localTasks = this.getTasks();
+      const remoteTasks: Task[] = (data || []).map(item => ({
+        id: item.id,
+        title: item.title,
+        category: item.category_id || '',
+        dueDate: item.due_date,
+        priority: item.priority as 'high' | 'medium' | 'low',
+        status: item.status as 'todo' | 'done' | 'rollover',
+        createdAt: item.created_at,
+        completedAt: item.completed_at,
+        rolledOverFrom: item.rolled_over_from,
+        note: item.note || '',
+        isWeeklyGoal: item.is_weekly_goal,
+        isMonthlyGoal: item.is_monthly_goal || false,
+        order: item.order || 0,
+      }));
+
+      // Merging: combine local and remote using task ID as key
+      const mergedMap = new Map<string, Task>();
+      localTasks.forEach(t => mergedMap.set(t.id, t));
+      
+      let remoteHasNew = false;
+      let localHasNew = false;
+
+      remoteTasks.forEach(t => {
+        if (!mergedMap.has(t.id)) {
+          remoteHasNew = true;
+          mergedMap.set(t.id, t);
+        } else {
+          // If remote is different, overwrite local
+          const local = mergedMap.get(t.id)!;
+          if (JSON.stringify(local) !== JSON.stringify(t)) {
+            mergedMap.set(t.id, t);
+          }
+        }
+      });
+
+      // Upload local tasks that remote doesn't have yet
+      for (const t of localTasks) {
+        if (!remoteTasks.some(rt => rt.id === t.id)) {
+          localHasNew = true;
           await this.saveTaskToSupabase(t);
         }
       }
+
+      const mergedList = Array.from(mergedMap.values());
+      if (remoteHasNew || localHasNew) {
+        this.saveTasks(mergedList);
+      }
+      
+      return mergedList;
     } catch (err) {
       console.error('Failed to sync tasks with Supabase:', err);
     }

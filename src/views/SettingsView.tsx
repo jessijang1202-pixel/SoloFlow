@@ -192,7 +192,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           onClick={() => setActiveSettingsTab('project')}
           style={{ fontSize: '13px', padding: '8px 10px' }}
         >
-          💼 프로젝트 생성/관리
+          💼 프로젝트 관리
         </button>
         <button
           className={`project-tab-btn ${activeSettingsTab === 'category' ? 'active' : ''}`}

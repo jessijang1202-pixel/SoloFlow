@@ -10,6 +10,7 @@ import { todoService, getTodayString, sortTasks } from './services/todoService';
 import type { Task } from './services/todoService';
 import { categoryService } from './services/categoryService';
 import type { Category } from './services/categoryService';
+import { supabase } from './services/supabaseClient';
 
 import './App.css';
 
@@ -58,11 +59,45 @@ function App() {
         const syncedTasks = await todoService.syncWithSupabase();
         setTasks(syncedTasks);
       } catch (err) {
-        console.error('Initial database sync failed:', err);
+        console.error('Database sync failed:', err);
       }
     };
 
     syncDatabase();
+
+    // 10 seconds polling fallback
+    const intervalId = setInterval(() => {
+      syncDatabase();
+    }, 10000);
+
+    // Realtime listener
+    let subscription: any = null;
+    if (supabase) {
+      subscription = supabase
+        .channel('db-sync-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'todos' },
+          () => {
+            syncDatabase();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'categories' },
+          () => {
+            syncDatabase();
+          }
+        )
+        .subscribe();
+    }
+
+    return () => {
+      clearInterval(intervalId);
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
 
   // --- Task Handlers ---

@@ -269,9 +269,12 @@ export const categoryService = {
     ];
   },
 
+  getSupabaseClient() {
+    return supabase;
+  },
+
   async syncWithSupabase(): Promise<Category[]> {
     if (!supabase) {
-      console.warn('Supabase is not configured. Falling back to localStorage.');
       return this.getCategories();
     }
     try {
@@ -279,24 +282,51 @@ export const categoryService = {
         .from('categories')
         .select('*');
       if (error) throw error;
-      if (data && data.length > 0) {
-        const mapped: Category[] = data.map(item => ({
-          id: item.id,
-          name: item.name,
-          color: item.color,
-          isSystem: item.is_system,
-          isProject: item.is_project,
-          description: item.description || '',
-          milestones: item.milestones || [],
-        }));
-        this.saveCategories(mapped);
-        return mapped;
-      } else {
-        const current = this.getCategories();
-        for (const cat of current) {
-          await this.saveCategoryToSupabase(cat);
+      
+      const localCats = this.getCategories();
+      const remoteCats: Category[] = (data || []).map(item => ({
+        id: item.id,
+        name: item.name,
+        color: item.color,
+        isSystem: item.is_system,
+        isProject: item.is_project,
+        description: item.description || '',
+        milestones: item.milestones || [],
+      }));
+
+      // Merging: combine local and remote using category ID as key
+      const mergedMap = new Map<string, Category>();
+      localCats.forEach(c => mergedMap.set(c.id, c));
+
+      let remoteHasNew = false;
+      let localHasNew = false;
+
+      remoteCats.forEach(c => {
+        if (!mergedMap.has(c.id)) {
+          remoteHasNew = true;
+          mergedMap.set(c.id, c);
+        } else {
+          // If remote is different, overwrite local
+          const local = mergedMap.get(c.id)!;
+          if (JSON.stringify(local) !== JSON.stringify(c)) {
+            mergedMap.set(c.id, c);
+          }
+        }
+      });
+
+      // Upload local categories that remote doesn't have yet
+      for (const c of localCats) {
+        if (!remoteCats.some(rc => rc.id === c.id)) {
+          localHasNew = true;
+          await this.saveCategoryToSupabase(c);
         }
       }
+
+      const mergedList = Array.from(mergedMap.values());
+      if (remoteHasNew || localHasNew) {
+        this.saveCategories(mergedList);
+      }
+      return mergedList;
     } catch (err) {
       console.error('Failed to sync categories with Supabase:', err);
     }
