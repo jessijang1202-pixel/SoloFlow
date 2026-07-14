@@ -304,6 +304,7 @@
   border-top-right-radius: var(--radius-lg);
   border-top: 1px solid var(--border-color);
   padding: 24px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
   box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.3);
   z-index: 210;
   display: flex;

@@ -30,3 +30,20 @@ If you are developing a production application, we recommend enabling type-aware
 ```
 
 See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+
+## Supabase Configuration
+
+This project is set up with Supabase. 
+
+1. **Environment Variables**:
+   Create a `.env.local` file at the root of the project with the following contents:
+   ```env
+   VITE_SUPABASE_URL=https://nyoylqmvhfvuxtpousok.supabase.co
+   VITE_SUPABASE_ANON_KEY=your_anon_key
+   ```
+2. **Supabase Client**:
+   The client is initialized in [supabaseClient.ts](file:///e:/project/Scheduler/src/services/supabaseClient.ts). You can import `supabase` and make queries directly:
+   ```typescript
+   import { supabase } from './services/supabaseClient';
+   ```
+
