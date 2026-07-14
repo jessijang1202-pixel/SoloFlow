@@ -52,6 +52,11 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     }
   }, [isOpen, categories]);
 
+  const todayDate = new Date();
+  const tomorrowDate = new Date(todayDate);
+  tomorrowDate.setDate(todayDate.getDate() + 1);
+  const tomorrowStr = `${tomorrowDate.getFullYear()}-${String(tomorrowDate.getMonth() + 1).padStart(2, '0')}-${String(tomorrowDate.getDate()).padStart(2, '0')}`;
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -138,7 +143,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
               <button
                 type="button"
-                className={`btn btn-secondary ${dueDate === getTodayString() && !isWeeklyGoal ? 'btn-primary' : ''}`}
+                className={`btn ${dueDate === getTodayString() && !isWeeklyGoal ? 'btn-primary' : 'btn-secondary'}`}
                 style={{ flex: 1, minHeight: '40px', padding: '8px' }}
                 onClick={() => setQuickDate('today')}
               >
@@ -146,9 +151,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               </button>
               <button
                 type="button"
-                className={`btn btn-secondary ${
-                  dueDate !== getTodayString() && !isWeeklyGoal && dueDate !== '' ? 'btn-primary' : ''
-                }`}
+                className={`btn ${dueDate === tomorrowStr && !isWeeklyGoal ? 'btn-primary' : 'btn-secondary'}`}
                 style={{ flex: 1, minHeight: '40px', padding: '8px' }}
                 onClick={() => setQuickDate('tomorrow')}
               >
@@ -156,7 +159,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               </button>
               <button
                 type="button"
-                className={`btn btn-secondary ${isWeeklyGoal ? 'btn-primary' : ''}`}
+                className={`btn ${isWeeklyGoal ? 'btn-primary' : 'btn-secondary'}`}
                 style={{ flex: 1, minHeight: '40px', padding: '8px' }}
                 onClick={() => setQuickDate('weekly')}
               >
