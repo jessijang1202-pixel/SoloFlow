@@ -1,5 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Calendar, Trophy } from 'lucide-react';
+import { 
+  Calendar, 
+  Trophy, 
+  ChevronLeft, 
+  ChevronRight, 
+  ChevronsLeft, 
+  ChevronsRight
+} from 'lucide-react';
 import { getTodayString } from '../services/todoService';
 import type { Task } from '../services/todoService';
 import type { Category } from '../services/categoryService';
@@ -12,23 +19,32 @@ interface WeeklyViewProps {
 
 export const WeeklyView: React.FC<WeeklyViewProps> = ({ tasks, categories, onToggleTask }) => {
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
+  const [selectedProjId, setSelectedProjId] = useState<string>('all');
+  
+  // Monthly Calendar States
+  const [activeCalDate, setActiveCalDate] = useState<Date>(new Date());
+  const [selectedDateStr, setSelectedDateStr] = useState<string>(getTodayString());
 
   const categoryMap = useMemo(() => {
     return new Map(categories.map((c) => [c.id, c]));
   }, [categories]);
 
-  // Current year/month string (YYYY-MM)
-  const currentMonthStr = useMemo(() => {
-    const today = new Date();
-    const y = today.getFullYear();
-    const m = String(today.getMonth() + 1).padStart(2, '0');
-    return `${y}-${m}`;
-  }, []);
+  // Projects list for dropdown selector
+  const projectsList = useMemo(() => {
+    return categories.filter(c => c.isProject);
+  }, [categories]);
 
-  // 1. Get dates of the current week (Monday to Sunday)
+  // Current year/month string (YYYY-MM) for active calendar date
+  const activeMonthStr = useMemo(() => {
+    const y = activeCalDate.getFullYear();
+    const m = String(activeCalDate.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  }, [activeCalDate]);
+
+  // 1. WEEKLY VIEW LOGIC: Get dates of the current week (Monday to Sunday)
   const weekDays = useMemo(() => {
     const today = new Date();
-    const dayOfWeek = today.getDay(); // 0: Sun, 1: Mon, ...
+    const dayOfWeek = today.getDay();
     
     const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     const monday = new Date(today);
@@ -56,12 +72,12 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({ tasks, categories, onTog
     return days;
   }, []);
 
-  // 2. Filter Weekly Goals
+  // Filter Weekly Goals (week view)
   const weeklyGoals = useMemo(() => {
     return tasks.filter(t => t.isWeeklyGoal);
   }, [tasks]);
 
-  // 3. Group regular tasks by due date for this week
+  // Group regular tasks by due date for this week
   const tasksByDay = useMemo(() => {
     const map = new Map<string, Task[]>();
     weekDays.forEach(d => map.set(d.dateString, []));
@@ -74,32 +90,133 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({ tasks, categories, onTog
     return map;
   }, [tasks, weekDays]);
 
-  // 4. Monthly Goals
-  const monthlyGoals = useMemo(() => {
-    return tasks.filter(t => t.isMonthlyGoal && t.dueDate.startsWith(currentMonthStr));
-  }, [tasks, currentMonthStr]);
 
-  // 5. Group monthly tasks by day
-  const tasksByDayOfMonth = useMemo(() => {
+  // 2. MONTHLY VIEW LOGIC:
+  // Filter core goals: "이번달 핵심 목표는 카테고리별로 주간 목표를 열거해주고"
+  // Filtered by selected project and current calendar month
+  const filteredWeeklyGoals = useMemo(() => {
+    let list = tasks.filter(t => t.isWeeklyGoal && t.dueDate.startsWith(activeMonthStr));
+    if (selectedProjId !== 'all') {
+      list = list.filter(t => t.category === selectedProjId);
+    }
+    return list;
+  }, [tasks, activeMonthStr, selectedProjId]);
+
+  // Group goals by category
+  const goalsByCategory = useMemo(() => {
+    const groups = new Map<string, Task[]>();
+    filteredWeeklyGoals.forEach(goal => {
+      const catId = goal.category || 'other';
+      if (!groups.has(catId)) {
+        groups.set(catId, []);
+      }
+      groups.get(catId)!.push(goal);
+    });
+    return groups;
+  }, [filteredWeeklyGoals]);
+
+  // Group regular monthly tasks by day (for dots rendering)
+  const regularTasksByDayOfMonth = useMemo(() => {
     const map = new Map<string, Task[]>();
-    const monthlyTasks = tasks.filter(
-      t => !t.isWeeklyGoal && !t.isMonthlyGoal && t.dueDate.startsWith(currentMonthStr)
+    
+    // Regular plans (exclude goals) in active month
+    let list = tasks.filter(
+      t => !t.isWeeklyGoal && !t.isMonthlyGoal && t.dueDate.startsWith(activeMonthStr)
     );
 
-    monthlyTasks.forEach(task => {
+    if (selectedProjId !== 'all') {
+      list = list.filter(t => t.category === selectedProjId);
+    }
+
+    list.forEach(task => {
       if (!map.has(task.dueDate)) {
         map.set(task.dueDate, []);
       }
       map.get(task.dueDate)!.push(task);
     });
     return map;
-  }, [tasks, currentMonthStr]);
+  }, [tasks, activeMonthStr, selectedProjId]);
 
-  // Unique sorted dates of the month that have tasks
-  const monthDaysWithTasks = useMemo(() => {
-    const dates = Array.from(tasksByDayOfMonth.keys());
-    return dates.sort();
-  }, [tasksByDayOfMonth]);
+  // Detailed list of tasks for the selected day in calendar
+  const selectedDayTasks = useMemo(() => {
+    let list = tasks.filter(t => t.dueDate === selectedDateStr && !t.isWeeklyGoal && !t.isMonthlyGoal);
+    if (selectedProjId !== 'all') {
+      list = list.filter(t => t.category === selectedProjId);
+    }
+    return list;
+  }, [tasks, selectedDateStr, selectedProjId]);
+
+  // Calendar cells mapping
+  const calendarCells = useMemo(() => {
+    const year = activeCalDate.getFullYear();
+    const month = activeCalDate.getMonth(); // 0-indexed
+
+    // First day of active month
+    const firstDay = new Date(year, month, 1);
+    // Day of the week of the first day (0: Sun, 1: Mon, ..., 6: Sat)
+    const startDayOfWeek = firstDay.getDay();
+
+    // Total days in the active month
+    const totalDays = new Date(year, month + 1, 0).getDate();
+
+    // Total days in the previous month
+    const prevMonthTotalDays = new Date(year, month, 0).getDate();
+
+    const cells = [];
+
+    // Prefix days (from previous month)
+    for (let i = startDayOfWeek - 1; i >= 0; i--) {
+      const dayNum = prevMonthTotalDays - i;
+      const prevMonth = month === 0 ? 11 : month - 1;
+      const prevYear = month === 0 ? year - 1 : year;
+      const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+      cells.push({
+        dayNum,
+        dateStr,
+        isCurrentMonth: false,
+      });
+    }
+
+    // Current month days
+    for (let i = 1; i <= totalDays; i++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      cells.push({
+        dayNum: i,
+        dateStr,
+        isCurrentMonth: true,
+      });
+    }
+
+    // Suffix days (from next month) to complete the grid row
+    const remaining = 7 - (cells.length % 7);
+    if (remaining < 7) {
+      for (let i = 1; i <= remaining; i++) {
+        const nextMonth = month === 11 ? 0 : month + 1;
+        const nextYear = month === 11 ? year + 1 : year;
+        const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+        cells.push({
+          dayNum: i,
+          dateStr,
+          isCurrentMonth: false,
+        });
+      }
+    }
+
+    return cells;
+  }, [activeCalDate]);
+
+  // Calendar navigation callbacks
+  const changeMonth = (offset: number) => {
+    const copy = new Date(activeCalDate);
+    copy.setMonth(activeCalDate.getMonth() + offset);
+    setActiveCalDate(copy);
+  };
+
+  const changeYear = (offset: number) => {
+    const copy = new Date(activeCalDate);
+    copy.setFullYear(activeCalDate.getFullYear() + offset);
+    setActiveCalDate(copy);
+  };
 
   const getDayName = (dateString: string) => {
     const date = new Date(dateString);
@@ -116,7 +233,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({ tasks, categories, onTog
   return (
     <div className="weekly-container animate-fade-in">
       {/* View Switcher Header */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '12px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 className="weekly-title" style={{ margin: 0 }}>
             {viewMode === 'week' ? '주간 일정표' : '월간 일정표'}
@@ -125,7 +242,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({ tasks, categories, onTog
             {viewMode === 'week' ? (
               `${weekDays[0].label} ~ ${weekDays[6].label}`
             ) : (
-              `${new Date().getFullYear()}년 ${new Date().getMonth() + 1}월`
+              `${activeCalDate.getFullYear()}년 ${activeCalDate.getMonth() + 1}월`
             )}
           </div>
         </div>
@@ -287,46 +404,203 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({ tasks, categories, onTog
         </>
       ) : (
         <>
-          {/* A. Monthly Goals Section */}
-          <div className="weekly-goals-card">
+          {/* Project Selector - "캘린더위에 프로젝트를 선택하게 해주고" */}
+          <div className="form-group" style={{ marginBottom: '8px' }}>
+            <label className="form-label" style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              프로젝트 필터
+            </label>
+            <select
+              className="select-input"
+              value={selectedProjId}
+              onChange={(e) => setSelectedProjId(e.target.value)}
+              style={{ width: '100%', minHeight: '40px', padding: '8px', fontSize: '14px', borderRadius: 'var(--radius-md)' }}
+            >
+              <option value="all">전체 프로젝트 보기</option>
+              {projectsList.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* A. Monthly Goals Section - "이번달 핵심 목표는 카테고리별로 주간 목표를 열거해주고" */}
+          <div className="weekly-goals-card" style={{ marginBottom: '4px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <Trophy size={20} style={{ color: 'var(--accent-color)' }} />
-              <h2 style={{ fontSize: '15px', fontWeight: 700 }}>이번 달 핵심 목표</h2>
+              <Trophy size={18} style={{ color: 'var(--accent-color)' }} />
+              <h2 style={{ fontSize: '14px', fontWeight: 700, margin: 0 }}>이번 달 핵심 목표</h2>
             </div>
             
-            {monthlyGoals.length === 0 ? (
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                등록된 월간 핵심 목표가 없습니다. 하단의 [+] 버튼을 누르고 '월간 목표'를 지정해 보세요.
+            {goalsByCategory.size === 0 ? (
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
+                이번 달 등록된 핵심 주간 목표가 없습니다.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {Array.from(goalsByCategory.entries()).map(([catId, goals]) => {
+                  const cat = categoryMap.get(catId);
+                  return (
+                    <div key={catId} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: cat?.color || 'var(--text-muted)' }} />
+                        {cat?.name || '기타'}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '14px' }}>
+                        {goals.map(goal => (
+                          <div 
+                            key={goal.id} 
+                            style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '6px', 
+                              fontSize: '13px',
+                              color: goal.status === 'done' ? 'var(--text-muted)' : 'var(--text-primary)',
+                              textDecoration: goal.status === 'done' ? 'line-through' : 'none'
+                            }}
+                          >
+                            <button
+                              className="custom-checkbox"
+                              style={{
+                                width: '15px',
+                                height: '15px',
+                                borderColor: goal.status === 'done' ? 'var(--accent-color)' : 'var(--text-muted)',
+                                backgroundColor: goal.status === 'done' ? 'var(--accent-color)' : 'transparent',
+                                color: goal.status === 'done' ? 'white' : 'transparent',
+                                fontSize: '8px',
+                                padding: 0
+                              }}
+                              onClick={() => onToggleTask(goal.id)}
+                            >
+                              ✓
+                            </button>
+                            {goal.title}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* B. Monthly Calendar - "그 아래에 캘린더가 위치하게 해줘. 캘린더는 1개만 화면에 보여지게 하고 다음달 다음해까지 넘겨 볼수 있게 해줘" */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* Calendar Controls */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-surface)', padding: '6px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button className="btn btn-secondary" style={{ padding: '6px 10px', minHeight: 'auto' }} onClick={() => changeYear(-1)} aria-label="Prev year">
+                  <ChevronsLeft size={16} />
+                </button>
+                <button className="btn btn-secondary" style={{ padding: '6px 10px', minHeight: 'auto' }} onClick={() => changeMonth(-1)} aria-label="Prev month">
+                  <ChevronLeft size={16} />
+                </button>
+              </div>
+
+              <span style={{ fontSize: '14px', fontWeight: 800 }}>
+                {activeCalDate.getFullYear()}년 {activeCalDate.getMonth() + 1}월
+              </span>
+
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button className="btn btn-secondary" style={{ padding: '6px 10px', minHeight: 'auto' }} onClick={() => changeMonth(1)} aria-label="Next month">
+                  <ChevronRight size={16} />
+                </button>
+                <button className="btn btn-secondary" style={{ padding: '6px 10px', minHeight: 'auto' }} onClick={() => changeYear(1)} aria-label="Next year">
+                  <ChevronsRight size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Calendar Grid container */}
+            <div className="calendar-grid">
+              {/* Day headers */}
+              {['일', '월', '화', '수', '목', '금', '토'].map((h, idx) => (
+                <div key={idx} className="calendar-cell-header" style={{ color: idx === 0 ? '#ef4444' : (idx === 6 ? '#3b82f6' : 'var(--text-muted)') }}>
+                  {h}
+                </div>
+              ))}
+
+              {/* Day cells */}
+              {calendarCells.map((cell, idx) => {
+                const isToday = cell.dateStr === getTodayString();
+                const isActive = cell.dateStr === selectedDateStr;
+                const cellTasks = regularTasksByDayOfMonth.get(cell.dateStr) || [];
+                const dayIndex = idx % 7; // Sunday is 0, Saturday is 6
+
+                return (
+                  <div
+                    key={idx}
+                    className={`calendar-cell ${!cell.isCurrentMonth ? 'other-month' : ''} ${isActive ? 'active-day' : ''}`}
+                    onClick={() => setSelectedDateStr(cell.dateStr)}
+                  >
+                    <span 
+                      className={`calendar-cell-num ${isToday ? 'today-num' : ''}`}
+                      style={{ color: dayIndex === 0 ? '#ef4444' : (dayIndex === 6 ? '#3b82f6' : undefined) }}
+                    >
+                      {cell.dayNum}
+                    </span>
+
+                    {/* Task Indicators */}
+                    {cellTasks.length > 0 && (
+                      <div className="calendar-dots-container">
+                        {cellTasks.slice(0, 3).map(t => {
+                          const color = categoryMap.get(t.category)?.color || 'var(--accent-color)';
+                          return (
+                            <span key={t.id} className="calendar-dot" style={{ backgroundColor: color }} />
+                          );
+                        })}
+                        {cellTasks.length > 3 && (
+                          <span className="calendar-dot-plus">+</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* C. Selected Date Details List */}
+          <div className="weekly-goals-card" style={{ marginTop: '4px', background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h3 style={{ fontSize: '13px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                📅 {getMonthLabel(selectedDateStr)} ({getDayName(selectedDateStr)}) 일정 ({selectedDayTasks.length})
+              </h3>
+            </div>
+
+            {selectedDayTasks.length === 0 ? (
+              <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>
+                이 날짜에 계획된 마감 업무가 없습니다.
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {monthlyGoals.map(goal => {
-                  const cat = categoryMap.get(goal.category);
+                {selectedDayTasks.map(task => {
+                  const cat = categoryMap.get(task.category);
                   return (
                     <div 
-                      key={goal.id} 
-                      className={`weekly-mini-task ${goal.status === 'done' ? 'done' : ''}`}
-                      style={{ padding: '10px 12px' }}
+                      key={task.id} 
+                      className={`weekly-mini-task ${task.status === 'done' ? 'done' : ''}`}
+                      style={{ padding: '8px 10px', background: 'var(--bg-surface)' }}
                     >
                       <button 
                         className="custom-checkbox" 
                         style={{ 
-                          width: '18px', 
-                          height: '18px', 
-                          borderColor: goal.status === 'done' ? 'var(--accent-color)' : 'var(--text-muted)',
-                          backgroundColor: goal.status === 'done' ? 'var(--accent-color)' : 'transparent',
-                          color: goal.status === 'done' ? 'white' : 'transparent',
-                          marginRight: '8px',
-                          fontSize: '10px'
+                          width: '16px', 
+                          height: '16px', 
+                          borderColor: task.status === 'done' ? 'var(--accent-color)' : 'var(--text-muted)',
+                          backgroundColor: task.status === 'done' ? 'var(--accent-color)' : 'transparent',
+                          color: task.status === 'done' ? 'white' : 'transparent',
+                          fontSize: '9px'
                         }}
-                        onClick={() => onToggleTask(goal.id)}
+                        onClick={() => onToggleTask(task.id)}
                       >
                         ✓
                       </button>
-                      <span style={{ flex: 1, fontWeight: goal.status === 'done' ? 'normal' : '600' }}>
-                        {goal.title}
-                      </span>
-                      <span style={{ fontSize: '10px', opacity: 0.8, backgroundColor: 'var(--bg-active)', padding: '2px 6px', borderRadius: '4px' }}>
+                      <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {task.title}
+                      </div>
+                      {task.priority === 'high' && (
+                        <span style={{ color: 'var(--priority-high-text)', fontWeight: 'bold', fontSize: '10px', marginRight: '6px' }}>!!!</span>
+                      )}
+                      <span style={{ fontSize: '9px', opacity: 0.8, backgroundColor: 'var(--bg-active)', padding: '1px 5px', borderRadius: '4px' }}>
                         {cat?.name || '기타'}
                       </span>
                     </div>
@@ -335,90 +609,6 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({ tasks, categories, onTog
               </div>
             )}
           </div>
-
-          {/* B. Monthly Daily List */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
-            <Calendar size={18} style={{ color: 'var(--text-muted)' }} />
-            <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-secondary)' }}>일자별 계획된 업무</h2>
-          </div>
-
-          {monthDaysWithTasks.length === 0 ? (
-            <div className="empty-state" style={{ padding: '30px 20px', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-md)' }}>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>이번 달 등록된 실행 일정이 없습니다.</p>
-            </div>
-          ) : (
-            <div className="weekly-days-list">
-              {monthDaysWithTasks.map(dateStr => {
-                const dayTasks = tasksByDayOfMonth.get(dateStr) || [];
-                const doneTasksCount = dayTasks.filter(t => t.status === 'done').length;
-                const isToday = dateStr === getTodayString();
-
-                return (
-                  <div 
-                    key={dateStr} 
-                    className="weekly-day-card"
-                    style={isToday ? { borderColor: 'var(--accent-color)', borderWidth: '1.5px', background: 'linear-gradient(180deg, var(--card-bg) 0%, rgba(167, 139, 250, 0.03) 100%)' } : {}}
-                  >
-                    <div className="weekly-day-header">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span className="weekly-day-name">{getMonthLabel(dateStr)}</span>
-                        <span className="weekly-day-date">({getDayName(dateStr).substring(0, 1)})</span>
-                        {isToday && (
-                          <span 
-                            style={{ 
-                              fontSize: '9px', 
-                              backgroundColor: 'var(--accent-color)', 
-                              color: 'white', 
-                              padding: '2px 6px', 
-                              borderRadius: '4px',
-                              fontWeight: 'bold' 
-                            }}
-                          >
-                            TODAY
-                          </span>
-                        )}
-                      </div>
-                      <span className="weekly-day-count">
-                        {doneTasksCount}/{dayTasks.length} 완료
-                      </span>
-                    </div>
-
-                    <div className="weekly-day-tasks">
-                      {dayTasks.map(task => {
-                        return (
-                          <div 
-                            key={task.id} 
-                            className={`weekly-mini-task ${task.status === 'done' ? 'done' : ''}`}
-                          >
-                            <button 
-                              className="custom-checkbox" 
-                              style={{ 
-                                width: '16px', 
-                                height: '16px', 
-                                borderColor: task.status === 'done' ? 'var(--accent-color)' : 'var(--text-muted)',
-                                backgroundColor: task.status === 'done' ? 'var(--accent-color)' : 'transparent',
-                                color: task.status === 'done' ? 'white' : 'transparent',
-                                fontSize: '9px'
-                              }}
-                              onClick={() => onToggleTask(task.id)}
-                            >
-                              ✓
-                            </button>
-                            <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {task.title}
-                            </div>
-                            {task.priority === 'high' && (
-                              <span style={{ color: 'var(--priority-high-text)', fontWeight: 'bold', fontSize: '9px' }}>!!!</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </>
       )}
     </div>

@@ -26,24 +26,19 @@ export const Layout: React.FC<LayoutProps> = ({
           <span style={{ fontSize: '27px', fontWeight: '800', letterSpacing: '-0.5px' }}>
             SoloFlow
           </span>
-          <div
+          <span
             style={{
-              background: 'linear-gradient(135deg, var(--accent-color), var(--accent-hover))',
-              color: '#ffe066', // Premium warm yellow
               fontFamily: '"Nanum Pen Script", cursive',
-              fontSize: '20px',
+              fontSize: '24px',
               fontWeight: 'bold',
-              padding: '3px 10px',
-              borderRadius: '8px',
-              marginLeft: '6px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: 'var(--shadow-sm)',
+              color: 'var(--accent-color)',
+              marginLeft: '8px',
+              alignSelf: 'flex-end',
+              marginBottom: '-2px',
             }}
           >
-            더 이상 미루지마!
-          </div>
+            미루지 마!
+          </span>
         </div>
         
         <button
