@@ -45,12 +45,19 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       setIsWeeklyGoal(false);
       setIsMonthlyGoal(false);
       
+      if (categories.length > 0) {
+        setCategoryId(categories[0].id);
+      } else {
+        setCategoryId('');
+      }
+      
       // Auto focus
       setTimeout(() => {
         titleInputRef.current?.focus();
       }, 150);
     }
-  }, [isOpen, categories]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const todayDate = new Date();
   const tomorrowDate = new Date(todayDate);
