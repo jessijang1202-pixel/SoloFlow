@@ -1,0 +1,17 @@
+{
+  "short_name": "SoloFlow",
+  "name": "SoloFlow - 데일리 실행 관리 앱",
+  "description": "1인 사업가 및 콘텐츠 크리에이터를 위한 모바일 퍼스트 데일리 실행 관리 앱",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0b0f19",
+  "theme_color": "#a78bfa",
+  "display": "standalone",
+  "orientation": "portrait"
+}
