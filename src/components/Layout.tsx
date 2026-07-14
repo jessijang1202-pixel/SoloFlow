@@ -42,6 +42,18 @@ export const Layout: React.FC<LayoutProps> = ({
           <span style={{ fontSize: '18px', fontWeight: '800', letterSpacing: '-0.5px' }}>
             SoloFlow
           </span>
+          <span
+            style={{
+              fontFamily: '"Nanum Pen Script", cursive',
+              fontSize: '17px',
+              color: 'var(--accent-color)',
+              marginLeft: '4px',
+              alignSelf: 'flex-end',
+              marginBottom: '1px',
+            }}
+          >
+            더이상 미루지 마!
+          </span>
         </div>
         
         <button
