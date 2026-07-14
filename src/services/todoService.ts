@@ -12,6 +12,7 @@ export interface Task {
   rolledOverFrom: string | null; // Original due date
   note: string;
   isWeeklyGoal: boolean;
+  isMonthlyGoal?: boolean;
   order: number;
 }
 
@@ -189,6 +190,7 @@ export const todoService = {
           rolledOverFrom: item.rolled_over_from,
           note: item.note || '',
           isWeeklyGoal: item.is_weekly_goal,
+          isMonthlyGoal: item.is_monthly_goal || false,
           order: item.order || 0,
         }));
         this.saveTasks(mapped);
@@ -222,6 +224,7 @@ export const todoService = {
           rolled_over_from: task.rolledOverFrom,
           note: task.note || '',
           is_weekly_goal: task.isWeeklyGoal,
+          is_monthly_goal: task.isMonthlyGoal || false,
           order: task.order,
         });
       if (error) throw error;

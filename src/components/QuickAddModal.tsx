@@ -14,6 +14,7 @@ interface QuickAddModalProps {
     priority: 'high' | 'medium' | 'low';
     note: string;
     isWeeklyGoal: boolean;
+    isMonthlyGoal: boolean;
   }) => void;
 }
 
@@ -29,21 +30,20 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   const [priority, setPriority] = useState<'high' | 'medium' | 'low'>('medium');
   const [note, setNote] = useState('');
   const [isWeeklyGoal, setIsWeeklyGoal] = useState(false);
+  const [isMonthlyGoal, setIsMonthlyGoal] = useState(false);
 
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   // Set default category on open
   useEffect(() => {
     if (isOpen) {
-      if (categories.length > 0 && !categoryId) {
-        setCategoryId(categories[0].id);
-      }
       // Reset inputs
       setTitle('');
       setDueDate(getTodayString());
       setPriority('medium');
       setNote('');
       setIsWeeklyGoal(false);
+      setIsMonthlyGoal(false);
       
       // Auto focus
       setTimeout(() => {
@@ -70,17 +70,19 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       priority,
       note: note.trim(),
       isWeeklyGoal,
+      isMonthlyGoal,
     });
     
     onClose();
   };
 
   // Helper to set relative dates
-  const setQuickDate = (type: 'today' | 'tomorrow' | 'weekly') => {
+  const setQuickDate = (type: 'today' | 'tomorrow' | 'weekly' | 'monthly') => {
     const today = new Date();
     if (type === 'today') {
       setDueDate(getTodayString());
       setIsWeeklyGoal(false);
+      setIsMonthlyGoal(false);
     } else if (type === 'tomorrow') {
       const tomorrow = new Date(today);
       tomorrow.setDate(today.getDate() + 1);
@@ -89,9 +91,10 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       const d = String(tomorrow.getDate()).padStart(2, '0');
       setDueDate(`${y}-${m}-${d}`);
       setIsWeeklyGoal(false);
+      setIsMonthlyGoal(false);
     } else if (type === 'weekly') {
-      // Find upcoming Sunday or represent as weekly goal
       setIsWeeklyGoal(true);
+      setIsMonthlyGoal(false);
       
       // Weekly goals expire at the end of the current week (Sunday)
       const currentDay = today.getDay(); // 0 is Sunday, 1 is Monday
@@ -102,6 +105,18 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       const y = sunday.getFullYear();
       const m = String(sunday.getMonth() + 1).padStart(2, '0');
       const d = String(sunday.getDate()).padStart(2, '0');
+      setDueDate(`${y}-${m}-${d}`);
+    } else if (type === 'monthly') {
+      setIsWeeklyGoal(false);
+      setIsMonthlyGoal(true);
+      
+      // Monthly goals expire at the last day of the current month
+      const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      const lastDayOfMonth = new Date(nextMonth.getTime() - 86400000);
+      
+      const y = lastDayOfMonth.getFullYear();
+      const m = String(lastDayOfMonth.getMonth() + 1).padStart(2, '0');
+      const d = String(lastDayOfMonth.getDate()).padStart(2, '0');
       setDueDate(`${y}-${m}-${d}`);
     }
   };
@@ -140,19 +155,19 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
           {/* Quick Date Selector */}
           <div className="form-group">
             <label className="form-label">일정 설정</label>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
               <button
                 type="button"
-                className={`btn ${dueDate === getTodayString() && !isWeeklyGoal ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ flex: 1, minHeight: '40px', padding: '8px' }}
+                className={`btn ${dueDate === getTodayString() && !isWeeklyGoal && !isMonthlyGoal ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ minHeight: '40px', padding: '8px' }}
                 onClick={() => setQuickDate('today')}
               >
                 오늘
               </button>
               <button
                 type="button"
-                className={`btn ${dueDate === tomorrowStr && !isWeeklyGoal ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ flex: 1, minHeight: '40px', padding: '8px' }}
+                className={`btn ${dueDate === tomorrowStr && !isWeeklyGoal && !isMonthlyGoal ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ minHeight: '40px', padding: '8px' }}
                 onClick={() => setQuickDate('tomorrow')}
               >
                 내일
@@ -160,10 +175,18 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               <button
                 type="button"
                 className={`btn ${isWeeklyGoal ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ flex: 1, minHeight: '40px', padding: '8px' }}
+                style={{ minHeight: '40px', padding: '8px' }}
                 onClick={() => setQuickDate('weekly')}
               >
                 주간 목표
+              </button>
+              <button
+                type="button"
+                className={`btn ${isMonthlyGoal ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ minHeight: '40px', padding: '8px' }}
+                onClick={() => setQuickDate('monthly')}
+              >
+                월간 목표
               </button>
             </div>
             

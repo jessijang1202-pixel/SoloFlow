@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckSquare, Calendar, Folder, CheckCircle, Plus } from 'lucide-react';
+import { CheckSquare, Calendar, Trophy, Settings, Plus } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -52,16 +52,20 @@ export const Layout: React.FC<LayoutProps> = ({
             background: 'var(--bg-surface)',
             border: '1px solid var(--border-color)',
             color: 'var(--text-primary)',
-            padding: '8px 12px',
+            padding: '8px',
             borderRadius: 'var(--radius-sm)',
             cursor: 'pointer',
-            fontSize: '12px',
-            fontWeight: '600',
+            fontSize: '16px',
+            width: '36px',
+            height: '36px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             transition: 'all var(--transition-fast)',
           }}
           aria-label="Toggle Theme"
         >
-          {theme === 'dark' ? '☀️ 라이트' : '🌙 다크'}
+          {theme === 'dark' ? '☀️' : '🌙'}
         </button>
       </header>
 
@@ -85,7 +89,7 @@ export const Layout: React.FC<LayoutProps> = ({
           onClick={() => setActiveTab('weekly')}
         >
           <Calendar size={20} />
-          <span>주간</span>
+          <span>주간/월간</span>
         </button>
 
         {/* Central Floating Action Button */}
@@ -104,16 +108,16 @@ export const Layout: React.FC<LayoutProps> = ({
           className={`bottom-nav-item ${activeTab === 'category' ? 'active' : ''}`}
           onClick={() => setActiveTab('category')}
         >
-          <Folder size={20} />
-          <span>카테고리</span>
+          <Trophy size={20} />
+          <span>목표관리</span>
         </button>
 
         <button
-          className={`bottom-nav-item ${activeTab === 'done' ? 'active' : ''}`}
-          onClick={() => setActiveTab('done')}
+          className={`bottom-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('settings')}
         >
-          <CheckCircle size={20} />
-          <span>완료</span>
+          <Settings size={20} />
+          <span>설정</span>
         </button>
       </nav>
     </div>

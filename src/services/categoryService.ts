@@ -116,6 +116,23 @@ export const categoryService = {
     return updated;
   },
 
+  updateCategoryMilestones(categoryId: string, milestones: Milestone[]): Category[] {
+    const categories = this.getCategories();
+    const updated = categories.map(cat => {
+      if (cat.id === categoryId) {
+        return {
+          ...cat,
+          milestones,
+        };
+      }
+      return cat;
+    });
+    this.saveCategories(updated);
+    const updatedCat = updated.find(c => c.id === categoryId);
+    if (updatedCat) this.saveCategoryToSupabase(updatedCat);
+    return updated;
+  },
+
   // Add a manual milestone to a project
   addMilestone(categoryId: string, title: string, targetDate: string, note = ''): Category[] {
     const categories = this.getCategories();

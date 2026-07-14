@@ -28,13 +28,19 @@ export const TodayView: React.FC<TodayViewProps> = ({
     return new Map(categories.map((c) => [c.id, c]));
   }, [categories]);
 
-  // Filter tasks that are due today or are weekly goals that are still todo
+  // 1. Regular active tasks due today (incomplete & rollover)
   const todayTasks = useMemo(() => {
     return tasks.filter((task) => {
-      // 1. Regular tasks due today (includes rollover tasks since their dueDate is updated to today)
       const isDueToday = task.dueDate === todayStr && !task.isWeeklyGoal;
-      // 2. We only show incomplete tasks on the main list
       return isDueToday && task.status !== 'done';
+    });
+  }, [tasks, todayStr]);
+
+  // 2. Completed tasks due today
+  const todayDoneTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      const isDueToday = task.dueDate === todayStr && !task.isWeeklyGoal;
+      return isDueToday && task.status === 'done';
     });
   }, [tasks, todayStr]);
 
@@ -43,11 +49,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
     return todayTasks.filter((t) => t.status === 'rollover').length;
   }, [todayTasks]);
 
-  const completedTodayCount = useMemo(() => {
-    // Count how many tasks due today are completed
-    return tasks.filter((task) => task.dueDate === todayStr && !task.isWeeklyGoal && task.status === 'done').length;
-  }, [tasks, todayStr]);
-
+  const completedTodayCount = todayDoneTasks.length;
   const totalTodayCount = todayTasks.length + completedTodayCount;
 
   const progressPercent = useMemo(() => {
@@ -55,7 +57,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
     return Math.round((completedTodayCount / totalTodayCount) * 100);
   }, [completedTodayCount, totalTodayCount]);
 
-  // Filter based on selected category chip
+  // Filter active tasks based on selected category chip
   const filteredTasks = useMemo(() => {
     let list = todayTasks;
     if (selectedCategory !== 'all') {
@@ -63,6 +65,20 @@ export const TodayView: React.FC<TodayViewProps> = ({
     }
     return sortTasks(list);
   }, [todayTasks, selectedCategory]);
+
+  // Filter completed tasks based on selected category chip
+  const filteredDoneTasks = useMemo(() => {
+    let list = todayDoneTasks;
+    if (selectedCategory !== 'all') {
+      list = list.filter((t) => t.category === selectedCategory);
+    }
+    // Sort completed tasks by completion time (latest completed first)
+    return [...list].sort((a, b) => {
+      const aTime = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+      const bTime = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+      return bTime - aTime;
+    });
+  }, [todayDoneTasks, selectedCategory]);
 
   const getPriorityLabel = (priority: string) => {
     switch (priority) {
@@ -142,18 +158,18 @@ export const TodayView: React.FC<TodayViewProps> = ({
         })}
       </div>
 
-      {/* 3. Task List Section */}
+      {/* 3. Active Task List Section */}
       <div className="todo-section-title">
-        <span>실행 리스트</span>
+        <span>실행 리스트 ({filteredTasks.length})</span>
         <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'normal' }}>
           (이월 및 높은 우선순위가 상단에 배치됩니다)
         </span>
       </div>
 
       {filteredTasks.length === 0 ? (
-        <div className="empty-state">
-          <Calendar size={48} className="empty-state-icon" />
-          <h3 className="empty-state-title">오늘 예정된 업무가 없습니다</h3>
+        <div className="empty-state" style={{ padding: '30px 20px' }}>
+          <Calendar size={36} className="empty-state-icon" />
+          <h3 className="empty-state-title" style={{ fontSize: '14px' }}>오늘 예정된 실행 업무가 없습니다</h3>
           <p className="empty-state-desc">아래의 [+] 버튼을 눌러 오늘 해야 할 일을 빠르게 등록해 보세요.</p>
         </div>
       ) : (
@@ -252,6 +268,75 @@ export const TodayView: React.FC<TodayViewProps> = ({
                       padding: '6px',
                       cursor: 'pointer',
                       marginTop: '4px',
+                    }}
+                    aria-label="Delete Task"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 4. Completed Task List Section */}
+      <div className="todo-section-title" style={{ marginTop: '30px' }}>
+        <span>완료된 리스트 ({filteredDoneTasks.length})</span>
+      </div>
+
+      {filteredDoneTasks.length === 0 ? (
+        <div className="empty-state" style={{ padding: '24px 20px', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-md)' }}>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>오늘 완료한 일정이 아직 없습니다.</p>
+        </div>
+      ) : (
+        <div className="todo-list">
+          {filteredDoneTasks.map((task) => {
+            const cat = categoryMap.get(task.category);
+            return (
+              <div
+                key={task.id}
+                className="todo-item done"
+              >
+                {/* Checked Checkbox */}
+                <div className="todo-item-check">
+                  <button
+                    className="custom-checkbox"
+                    onClick={() => onToggleTask(task.id)}
+                    aria-label="Toggle active"
+                  >
+                    ✓
+                  </button>
+                </div>
+
+                {/* Card Body */}
+                <div className="todo-item-body">
+                  <div className="todo-item-title">{task.title}</div>
+                  {task.note && (
+                    <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '-2px' }}>
+                      {task.note}
+                    </div>
+                  )}
+                  <div className="todo-item-tags">
+                    <span className="category-tag">{cat?.name || '기타'}</span>
+                  </div>
+                </div>
+
+                {/* Delete Button Only */}
+                <div style={{ marginLeft: '8px' }}>
+                  <button
+                    onClick={() => {
+                      if (confirm('이 할 일을 삭제하시겠습니까?')) {
+                        onDeleteTask(task.id);
+                      }
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#ef4444',
+                      opacity: 0.7,
+                      padding: '6px',
+                      cursor: 'pointer',
                     }}
                     aria-label="Delete Task"
                   >

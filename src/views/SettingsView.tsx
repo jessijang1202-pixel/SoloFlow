@@ -1,28 +1,89 @@
-import React, { useRef } from 'react';
-import { Download, Upload, Trash2, Bell } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { 
+  Download, 
+  Upload, 
+  Trash2, 
+  Bell, 
+  Plus, 
+  Lock, 
+  AlertTriangle, 
+  RefreshCw 
+} from 'lucide-react';
 import type { Task } from '../services/todoService';
+import type { Category } from '../services/categoryService';
 
 interface SettingsViewProps {
-  theme: 'light' | 'dark';
-  setTheme: (theme: 'light' | 'dark') => void;
   tasks: Task[];
   onImportData: (importedTasks: Task[]) => void;
   onClearAllData: () => void;
+  categories: Category[];
+  onAddCategory: (name: string, color: string, isProject?: boolean, description?: string) => void;
+  onDeleteCategory: (id: string) => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
-  theme,
-  setTheme,
   tasks,
   onImportData,
   onClearAllData,
+  categories,
+  onAddCategory,
+  onDeleteCategory,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'project' | 'category' | 'system'>('project');
 
-  // Toggle theme utility
-  const handleThemeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const nextTheme = e.target.checked ? 'dark' : 'light';
-    setTheme(nextTheme);
+  // Form States for Projects
+  const [newProjName, setNewProjName] = useState('');
+  const [newProjDesc, setNewProjDesc] = useState('');
+  const [selectedProjColor, setSelectedProjColor] = useState('#3b82f6');
+
+  // Form States for Categories
+  const [newCatName, setNewCatName] = useState('');
+  const [selectedCatColor, setSelectedCatColor] = useState('#10b981');
+
+  const COLOR_PRESETS = [
+    '#3b82f6', '#10b981', '#ef4444', '#ec4899',
+    '#f59e0b', '#8b5cf6', '#14b8a6', '#f97316',
+    '#06b6d4', '#84cc16', '#a855f7', '#6b7280',
+  ];
+
+  // Submit Handler for New Project
+  const handleAddProjectSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProjName.trim()) return;
+
+    if (categories.some(c => c.name.trim() === newProjName.trim())) {
+      alert('이미 존재하는 이름입니다. 다른 이름을 사용해 주세요.');
+      return;
+    }
+
+    onAddCategory(newProjName.trim(), selectedProjColor, true, newProjDesc.trim());
+    setNewProjName('');
+    setNewProjDesc('');
+    
+    // Auto color switch helper
+    const nextIdx = (COLOR_PRESETS.indexOf(selectedProjColor) + 1) % COLOR_PRESETS.length;
+    setSelectedProjColor(COLOR_PRESETS[nextIdx]);
+    alert('새 프로젝트가 추가되었습니다!');
+  };
+
+  // Submit Handler for New Category
+  const handleAddCategorySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatName.trim()) return;
+
+    if (categories.some(c => c.name.trim() === newCatName.trim())) {
+      alert('이미 존재하는 이름입니다. 다른 이름을 사용해 주세요.');
+      return;
+    }
+
+    onAddCategory(newCatName.trim(), selectedCatColor, false, '');
+    setNewCatName('');
+    
+    // Auto color switch helper
+    const nextIdx = (COLOR_PRESETS.indexOf(selectedCatColor) + 1) % COLOR_PRESETS.length;
+    setSelectedCatColor(COLOR_PRESETS[nextIdx]);
+    alert('새 카테고리가 추가되었습니다!');
   };
 
   // Export tasks as JSON file
@@ -48,7 +109,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       try {
         const parsed = JSON.parse(event.target?.result as string);
         if (Array.isArray(parsed)) {
-          // Quick validation checking if tasks have 'id' and 'title'
           const isValid = parsed.every(t => t && typeof t.id === 'string' && typeof t.title === 'string');
           if (isValid) {
             onImportData(parsed);
@@ -66,9 +126,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     fileReader.readAsText(files[0]);
   };
 
-  // Mock reminder triggers
+  // Notifications logic
   const triggerMockNotification = () => {
-    const incompleteTasks = tasks.filter(t => t.status !== 'done' && !t.isWeeklyGoal);
+    const incompleteTasks = tasks.filter(t => t.status !== 'done' && !t.isWeeklyGoal && !t.isMonthlyGoal);
     
     if (incompleteTasks.length === 0) {
       alert('오늘 남은 미완료 일정이 없습니다. 멋집니다! 🎉');
@@ -83,7 +143,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             icon: '/favicon.ico'
           });
         } else {
-          // Fallback simple dialog inside browser
           alert(`[SoloFlow 리마인더]\n오늘 미완료된 업무가 ${incompleteTasks.length}개 있습니다. 퇴근 전 확인하세요!`);
         }
       });
@@ -93,132 +152,313 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* View Header */}
       <div>
-        <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>설정</h1>
-        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
-          SoloFlow 환경 및 데이터 백업을 설정합니다.
+        <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>설정</h1>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+          프로젝트, 카테고리 관리 및 어플리케이션 환경을 설정합니다.
         </p>
       </div>
 
-      {/* 1. Theme Configuration */}
-      <div className="settings-section">
-        <h2 className="settings-section-title">화면 및 테마</h2>
-        <div className="settings-list">
-          <div className="settings-row">
-            <div>
-              <div className="settings-row-label">다크 모드 기본 적용</div>
-              <div className="settings-row-desc">어두운 화면으로 눈의 피로를 최소화합니다.</div>
-            </div>
-            <label className="switch">
-              <input
-                type="checkbox"
-                checked={theme === 'dark'}
-                onChange={handleThemeChange}
-              />
-              <span className="slider"></span>
-            </label>
-          </div>
-        </div>
+      {/* Settings Sub-tab switch headers */}
+      <div className="project-tabs-container" style={{ padding: '2px' }}>
+        <button
+          className={`project-tab-btn ${activeSettingsTab === 'project' ? 'active' : ''}`}
+          onClick={() => setActiveSettingsTab('project')}
+          style={{ fontSize: '13px', padding: '8px 10px' }}
+        >
+          💼 프로젝트 생성/관리
+        </button>
+        <button
+          className={`project-tab-btn ${activeSettingsTab === 'category' ? 'active' : ''}`}
+          onClick={() => setActiveSettingsTab('category')}
+          style={{ fontSize: '13px', padding: '8px 10px' }}
+        >
+          📂 카테고리 관리
+        </button>
+        <button
+          className={`project-tab-btn ${activeSettingsTab === 'system' ? 'active' : ''}`}
+          onClick={() => setActiveSettingsTab('system')}
+          style={{ fontSize: '13px', padding: '8px 10px' }}
+        >
+          ⚙️ 시스템/백업
+        </button>
       </div>
 
-      {/* 2. Notification Configuration */}
-      <div className="settings-section">
-        <h2 className="settings-section-title">알림 (리마인드)</h2>
-        <div className="settings-list">
-          <div className="settings-row">
-            <div>
-              <div className="settings-row-label">퇴근 전 미완료 업무 리마인드</div>
-              <div className="settings-row-desc">매일 저녁 남은 할 일을 브라우저 푸시로 알려줍니다.</div>
-            </div>
-            <button
+      {/* ----------------- PROJECTS TAB ----------------- */}
+      {activeSettingsTab === 'project' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* New Project Creator Card */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+              <Plus size={16} style={{ color: 'var(--accent-color)' }} />
+              신규 프로젝트 추가
+            </h2>
+            <form onSubmit={handleAddProjectSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  className="text-input"
+                  style={{ flex: 1, minHeight: '40px', padding: '10px', fontSize: '14px' }}
+                  placeholder="프로젝트명 (예: 신규 홈페이지 개발)"
+                  value={newProjName}
+                  onChange={(e) => setNewProjName(e.target.value)}
+                  required
+                />
+                
+                <select
+                  className="select-input"
+                  style={{ minHeight: '40px', padding: '8px', fontSize: '14px' }}
+                  value={selectedProjColor}
+                  onChange={(e) => setSelectedProjColor(e.target.value)}
+                >
+                  {COLOR_PRESETS.map(color => (
+                    <option key={color} value={color} style={{ color }}>
+                      색상
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <input
+                type="text"
+                className="text-input"
+                style={{ minHeight: '40px', padding: '10px', fontSize: '14px' }}
+                placeholder="프로젝트 상세 설명 요약"
+                value={newProjDesc}
+                onChange={(e) => setNewProjDesc(e.target.value)}
+              />
+
+              <button type="submit" className="btn btn-primary" style={{ minHeight: '40px' }}>
+                프로젝트 생성
+              </button>
+            </form>
+          </div>
+
+          {/* Project List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>등록된 프로젝트 목록</div>
+            {categories.filter(c => c.isProject).length === 0 ? (
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', paddingLeft: '4px' }}>등록된 프로젝트가 없습니다.</p>
+            ) : (
+              categories.filter(c => c.isProject).map(proj => (
+                <div 
+                  key={proj.id}
+                  style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    backgroundColor: 'var(--card-bg)',
+                    border: '1px solid var(--border-color)',
+                    padding: '12px 16px',
+                    borderRadius: 'var(--radius-md)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: proj.color }} />
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: 700 }}>{proj.name}</div>
+                      {proj.description && (
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{proj.description}</div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      if (confirm(`'${proj.name}' 프로젝트를 삭제하시겠습니까?\n프로젝트에 달린 마일스톤도 함께 영구 삭제됩니다.`)) {
+                        onDeleteCategory(proj.id);
+                        alert('삭제되었습니다.');
+                      }
+                    }}
+                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                    aria-label="Delete project"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ----------------- CATEGORIES TAB ----------------- */}
+      {activeSettingsTab === 'category' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* New Category Card */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+              <Plus size={16} style={{ color: 'var(--accent-color)' }} />
+              신규 카테고리 추가
+            </h2>
+            <form onSubmit={handleAddCategorySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  className="text-input"
+                  style={{ flex: 1, minHeight: '40px', padding: '10px', fontSize: '14px' }}
+                  placeholder="카테고리명 (예: 개인일정)"
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  required
+                />
+                
+                <select
+                  className="select-input"
+                  style={{ minHeight: '40px', padding: '8px', fontSize: '14px' }}
+                  value={selectedCatColor}
+                  onChange={(e) => setSelectedCatColor(e.target.value)}
+                >
+                  {COLOR_PRESETS.map(color => (
+                    <option key={color} value={color} style={{ color }}>
+                      색상
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button type="submit" className="btn btn-secondary" style={{ minHeight: '40px' }}>
+                카테고리 추가
+              </button>
+            </form>
+          </div>
+
+          {/* Category List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>등록된 카테고리 목록</div>
+            {categories.filter(c => !c.isProject).map(cat => (
+              <div 
+                key={cat.id}
+                style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  backgroundColor: 'var(--card-bg)',
+                  border: '1px solid var(--border-color)',
+                  padding: '12px 16px',
+                  borderRadius: 'var(--radius-md)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: cat.color }} />
+                  <span style={{ fontSize: '14px', fontWeight: 700 }}>{cat.name}</span>
+                  {cat.isSystem && (
+                    <span style={{ fontSize: '10px', backgroundColor: 'var(--bg-active)', padding: '2px 6px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                      <Lock size={10} /> 시스템
+                    </span>
+                  )}
+                </div>
+                
+                {cat.isSystem ? (
+                  <span style={{ color: 'var(--text-muted)', padding: '4px' }}>
+                    <Lock size={16} style={{ opacity: 0.5 }} />
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (confirm(`'${cat.name}' 카테고리를 삭제하시겠습니까?`)) {
+                        onDeleteCategory(cat.id);
+                        alert('삭제되었습니다.');
+                      }
+                    }}
+                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                    aria-label="Delete category"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ----------------- SYSTEM & BACKUP TAB ----------------- */}
+      {activeSettingsTab === 'system' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Notifications Card */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+              <Bell size={18} style={{ color: 'var(--accent-color)' }} />
+              일과 마감 알림
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4', margin: 0 }}>
+              오늘 완료하지 못한 일정이 있을 경우, 푸시 알림이나 브라우저 대화상자를 통해 리마인드 알림을 발송합니다.
+            </p>
+            <button 
               onClick={triggerMockNotification}
               className="btn btn-secondary"
-              style={{ minHeight: '38px', padding: '8px 12px', fontSize: '12px', display: 'flex', gap: '4px' }}
+              style={{ minHeight: '40px', fontSize: '13px' }}
             >
-              <Bell size={14} />
-              테스트 알림
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Data Control */}
-      <div className="settings-section">
-        <h2 className="settings-section-title">데이터 관리</h2>
-        <div className="settings-list">
-          {/* Export JSON */}
-          <div className="settings-row">
-            <div>
-              <div className="settings-row-label">데이터 백업 (내보내기)</div>
-              <div className="settings-row-desc">현재 일정을 JSON 파일로 다운로드하여 백업합니다.</div>
-            </div>
-            <button
-              onClick={handleExportData}
-              className="btn btn-secondary"
-              style={{ minHeight: '38px', padding: '8px 12px', fontSize: '12px', display: 'flex', gap: '6px' }}
-            >
-              <Download size={14} />
-              백업
+              알림 테스트 실행
             </button>
           </div>
 
-          {/* Import JSON */}
-          <div className="settings-row">
-            <div>
-              <div className="settings-row-label">데이터 복원 (불러오기)</div>
-              <div className="settings-row-desc">이전에 백업해 둔 JSON 파일을 불러와 복원합니다.</div>
-            </div>
-            <div>
-              <input
-                type="file"
-                ref={fileInputRef}
-                style={{ display: 'none' }}
-                accept=".json"
-                onChange={handleImportData}
-              />
-              <button
+          {/* Backup & Import Data */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+              <RefreshCw size={18} style={{ color: 'var(--accent-color)' }} />
+              데이터 백업 및 불러오기
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4', margin: 0 }}>
+              등록된 모든 일정을 JSON 백업 파일로 저장하거나, 백업 파일로부터 복원할 수 있습니다.
+            </p>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <button 
+                onClick={handleExportData}
+                className="btn btn-secondary"
+                style={{ minHeight: '40px', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}
+              >
+                <Download size={16} />
+                JSON 백업 내보내기
+              </button>
+
+              <button 
                 onClick={() => fileInputRef.current?.click()}
                 className="btn btn-secondary"
-                style={{ minHeight: '38px', padding: '8px 12px', fontSize: '12px', display: 'flex', gap: '6px' }}
+                style={{ minHeight: '40px', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}
               >
-                <Upload size={14} />
-                복원
+                <Upload size={16} />
+                JSON 백업 불러오기
               </button>
             </div>
+            
+            <input 
+              type="file"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              accept=".json"
+              onChange={handleImportData}
+            />
           </div>
 
-          {/* Hard Reset */}
-          <div className="settings-row" style={{ backgroundColor: 'rgba(239, 68, 68, 0.03)' }}>
-            <div>
-              <div className="settings-row-label" style={{ color: '#ef4444' }}>전체 데이터 초기화</div>
-              <div className="settings-row-desc">카테고리 및 등록된 모든 일정을 완전히 영구 삭제합니다.</div>
-            </div>
-            <button
+          {/* Dangerous Zone */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', borderColor: '#ef4444' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444', margin: 0 }}>
+              <AlertTriangle size={18} />
+              위험 구역 (초기화)
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4', margin: 0 }}>
+              어플리케이션에 저장된 모든 데이터(일정, 프로젝트, 설정 변수 등)를 영구 삭제하고 앱 초기 상태로 되돌립니다.
+            </p>
+            <button 
               onClick={() => {
-                if (confirm('주의: 모든 할 일 및 카테고리 데이터가 완전히 파괴되며 되돌릴 수 없습니다.\n정말 초기화하시겠습니까?')) {
+                if (confirm('⚠️ 정말로 모든 데이터를 완전히 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며 Supabase 데이터는 영향받지 않지만 로컬 상태가 전체 초기화됩니다.')) {
                   onClearAllData();
-                  alert('데이터가 완전히 초기화되었습니다.');
+                  alert('모든 로컬 데이터가 초기화되었습니다.');
                 }
               }}
               className="btn"
-              style={{
-                backgroundColor: '#ef4444',
-                color: 'white',
-                minHeight: '38px',
-                padding: '8px 12px',
-                fontSize: '12px',
-                display: 'flex',
-                gap: '6px',
-              }}
+              style={{ minHeight: '40px', backgroundColor: '#ef4444', color: 'white', border: 'none' }}
             >
-              <Trash2 size={14} />
-              초기화
+              전체 데이터 완전 초기화
             </button>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

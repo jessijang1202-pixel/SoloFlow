@@ -4,7 +4,6 @@ import QuickAddModal from './components/QuickAddModal';
 import TodayView from './views/TodayView';
 import WeeklyView from './views/WeeklyView';
 import CategoryView from './views/CategoryView';
-import DoneView from './views/DoneView';
 import SettingsView from './views/SettingsView';
 
 import { todoService, getTodayString, sortTasks } from './services/todoService';
@@ -143,12 +142,6 @@ function App() {
 
   // --- Data & Backup Actions ---
 
-  const handleClearAllDone = () => {
-    const activeTasks = tasks.filter(t => t.status !== 'done');
-    setTasks(activeTasks);
-    todoService.saveTasks(activeTasks);
-  };
-
   const handleImportData = (importedTasks: Task[]) => {
     setTasks(importedTasks);
     todoService.saveTasks(importedTasks);
@@ -192,28 +185,17 @@ function App() {
           <CategoryView
             categories={categories}
             tasks={tasks}
-            onAddCategory={handleAddCategory}
-            onDeleteCategory={handleDeleteCategory}
-          />
-        );
-      case 'done':
-        return (
-          <DoneView
-            tasks={tasks}
-            categories={categories}
-            onToggleTask={handleToggleTask}
-            onDeleteTask={handleDeleteTask}
-            onClearAllDone={handleClearAllDone}
           />
         );
       case 'settings':
         return (
           <SettingsView
-            theme={theme}
-            setTheme={setTheme}
             tasks={tasks}
             onImportData={handleImportData}
             onClearAllData={handleClearAllData}
+            categories={categories}
+            onAddCategory={handleAddCategory}
+            onDeleteCategory={handleDeleteCategory}
           />
         );
       default:

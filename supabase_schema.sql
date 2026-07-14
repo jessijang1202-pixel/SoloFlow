@@ -33,6 +33,7 @@ create table if not exists public.todos (
     rolled_over_from text,
     note text,
     is_weekly_goal boolean default false,
+    is_monthly_goal boolean default false,
     "order" integer default 0
 );
 
