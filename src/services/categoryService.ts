@@ -253,6 +253,10 @@ export const categoryService = {
   },
 
   async syncWithSupabase(): Promise<Category[]> {
+    if (!supabase) {
+      console.warn('Supabase is not configured. Falling back to localStorage.');
+      return this.getCategories();
+    }
     try {
       const { data, error } = await supabase
         .from('categories')
@@ -283,6 +287,7 @@ export const categoryService = {
   },
 
   async saveCategoryToSupabase(cat: Category) {
+    if (!supabase) return;
     try {
       const { error } = await supabase
         .from('categories')
@@ -302,6 +307,7 @@ export const categoryService = {
   },
 
   async deleteCategoryFromSupabase(id: string) {
+    if (!supabase) return;
     try {
       const { error } = await supabase
         .from('categories')

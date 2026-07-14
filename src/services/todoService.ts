@@ -167,6 +167,10 @@ export const todoService = {
   },
 
   async syncWithSupabase(): Promise<Task[]> {
+    if (!supabase) {
+      console.warn('Supabase is not configured. Falling back to localStorage.');
+      return this.getTasks();
+    }
     try {
       const { data, error } = await supabase
         .from('todos')
@@ -202,6 +206,7 @@ export const todoService = {
   },
 
   async saveTaskToSupabase(task: Task) {
+    if (!supabase) return;
     try {
       const { error } = await supabase
         .from('todos')
@@ -226,6 +231,7 @@ export const todoService = {
   },
 
   async deleteTaskFromSupabase(id: string) {
+    if (!supabase) return;
     try {
       const { error } = await supabase
         .from('todos')
