@@ -300,9 +300,35 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
               {currentProject.name}
             </span>
           </div>
-          <h1 className="stat-banner-title">{currentProject.name} 타임라인</h1>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <h1 className="stat-banner-title" style={{ margin: 0 }}>{currentProject.name} 타임라인</h1>
+            <button
+              onClick={() => setShowUploadPanel(true)}
+              className="btn btn-primary"
+              style={{ 
+                minHeight: '32px', 
+                padding: '4px 12px',
+                fontSize: '12px',
+                background: 'linear-gradient(135deg, var(--accent-color), var(--accent-hover))',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontWeight: 'bold',
+                boxShadow: 'var(--shadow-sm)'
+              }}
+            >
+              <Edit3 size={12} />
+              {milestonesList.length > 0 ? '목표 수정' : '목표 관리'}
+            </button>
+          </div>
+
           {currentProject.description && (
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px', marginBottom: 0 }}>
               {currentProject.description}
             </p>
           )}
@@ -318,30 +344,6 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
               <span className="stat-progress-text">종합 태스크 완료율 {projectCompletionRate}%</span>
               <span className="stat-progress-text">진행 {projectTasks.filter(t => t.status !== 'done').length}개 / 완료 {projectTasks.filter(t => t.status === 'done').length}개</span>
             </div>
-          </div>
-
-          {/* Trigger Button: Manage Goals (목표관리) / Edit Goals (목표수정) */}
-          <div style={{ marginTop: '14px' }}>
-            <button
-              onClick={() => setShowUploadPanel(true)}
-              className="btn btn-primary"
-              style={{ 
-                minHeight: '40px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px', 
-                fontSize: '13px',
-                padding: '8px 16px',
-                background: 'linear-gradient(135deg, var(--accent-color), var(--accent-hover))',
-                color: 'white',
-                border: 'none',
-                width: '100%',
-                justifyContent: 'center'
-              }}
-            >
-              <Edit3 size={16} />
-              {milestonesList.length > 0 ? '목표 수정 (업로드/입력)' : '목표 관리 (업로드/입력)'}
-            </button>
           </div>
         </div>
 

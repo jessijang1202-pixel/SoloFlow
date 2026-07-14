@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { Task } from '../services/todoService';
 import type { Category } from '../services/categoryService';
+import { categoryService } from '../services/categoryService';
 
 interface SettingsViewProps {
   tasks: Task[];
@@ -40,6 +41,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // Form States for Categories
   const [newCatName, setNewCatName] = useState('');
   const [selectedCatColor, setSelectedCatColor] = useState('#10b981');
+
+  // Project deletion custom options modal state
+  const [projectToDelete, setProjectToDelete] = useState<Category | null>(null);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
 
   const COLOR_PRESETS = [
     '#3b82f6', '#10b981', '#ef4444', '#ec4899',
@@ -84,6 +89,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     const nextIdx = (COLOR_PRESETS.indexOf(selectedCatColor) + 1) % COLOR_PRESETS.length;
     setSelectedCatColor(COLOR_PRESETS[nextIdx]);
     alert('새 카테고리가 추가되었습니다!');
+  };
+
+  // Project deletion confirm helper
+  const handleConfirmDeleteProject = (convertToCategory: boolean) => {
+    if (!projectToDelete) return;
+
+    if (convertToCategory) {
+      // Downgrade to regular category
+      categoryService.toggleProjectMode(projectToDelete.id, false);
+      alert(`'${projectToDelete.name}' 프로젝트가 일반 카테고리로 변경되었습니다.`);
+    } else {
+      // Remove completely
+      onDeleteCategory(projectToDelete.id);
+      alert(`'${projectToDelete.name}' 프로젝트가 완전히 삭제되었습니다.`);
+    }
+
+    setProjectToDelete(null);
+    setShowDeleteConfirmModal(false);
+    window.location.reload(); // Simple reload to refresh all views
   };
 
   // Export tasks as JSON file
@@ -196,29 +220,43 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               신규 프로젝트 추가
             </h2>
             <form onSubmit={handleAddProjectSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <input
                   type="text"
                   className="text-input"
-                  style={{ flex: 1, minHeight: '40px', padding: '10px', fontSize: '14px' }}
+                  style={{ minHeight: '40px', padding: '10px', fontSize: '14px' }}
                   placeholder="프로젝트명 (예: 신규 홈페이지 개발)"
                   value={newProjName}
                   onChange={(e) => setNewProjName(e.target.value)}
                   required
                 />
                 
-                <select
-                  className="select-input"
-                  style={{ minHeight: '40px', padding: '8px', fontSize: '14px' }}
-                  value={selectedProjColor}
-                  onChange={(e) => setSelectedProjColor(e.target.value)}
-                >
-                  {COLOR_PRESETS.map(color => (
-                    <option key={color} value={color} style={{ color }}>
-                      색상
-                    </option>
-                  ))}
-                </select>
+                {/* Horizontal Circle Color Grid Selector */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>프로젝트 색상 선택</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {COLOR_PRESETS.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => setSelectedProjColor(color)}
+                        style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          backgroundColor: color,
+                          border: selectedProjColor === color ? '2px solid var(--text-primary)' : '1px solid var(--border-color)',
+                          cursor: 'pointer',
+                          padding: 0,
+                          boxShadow: selectedProjColor === color ? '0 0 8px var(--accent-color)' : 'none',
+                          transform: selectedProjColor === color ? 'scale(1.1)' : 'scale(1)',
+                          transition: 'all var(--transition-fast)'
+                        }}
+                        aria-label={`Select color ${color}`}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <input
@@ -267,10 +305,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   
                   <button
                     onClick={() => {
-                      if (confirm(`'${proj.name}' 프로젝트를 삭제하시겠습니까?\n프로젝트에 달린 마일스톤도 함께 영구 삭제됩니다.`)) {
-                        onDeleteCategory(proj.id);
-                        alert('삭제되었습니다.');
-                      }
+                      setProjectToDelete(proj);
+                      setShowDeleteConfirmModal(true);
                     }}
                     style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
                     aria-label="Delete project"
@@ -294,29 +330,43 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               신규 카테고리 추가
             </h2>
             <form onSubmit={handleAddCategorySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <input
                   type="text"
                   className="text-input"
-                  style={{ flex: 1, minHeight: '40px', padding: '10px', fontSize: '14px' }}
+                  style={{ minHeight: '40px', padding: '10px', fontSize: '14px' }}
                   placeholder="카테고리명 (예: 개인일정)"
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
                   required
                 />
                 
-                <select
-                  className="select-input"
-                  style={{ minHeight: '40px', padding: '8px', fontSize: '14px' }}
-                  value={selectedCatColor}
-                  onChange={(e) => setSelectedCatColor(e.target.value)}
-                >
-                  {COLOR_PRESETS.map(color => (
-                    <option key={color} value={color} style={{ color }}>
-                      색상
-                    </option>
-                  ))}
-                </select>
+                {/* Horizontal Circle Color Grid Selector */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>카테고리 색상 선택</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {COLOR_PRESETS.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => setSelectedCatColor(color)}
+                        style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          backgroundColor: color,
+                          border: selectedCatColor === color ? '2px solid var(--text-primary)' : '1px solid var(--border-color)',
+                          cursor: 'pointer',
+                          padding: 0,
+                          boxShadow: selectedCatColor === color ? '0 0 8px var(--accent-color)' : 'none',
+                          transform: selectedCatColor === color ? 'scale(1.1)' : 'scale(1)',
+                          transition: 'all var(--transition-fast)'
+                        }}
+                        aria-label={`Select color ${color}`}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <button type="submit" className="btn btn-secondary" style={{ minHeight: '40px' }}>
@@ -456,6 +506,59 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             >
               전체 데이터 완전 초기화
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Project Deletion Custom Options Modal */}
+      {showDeleteConfirmModal && projectToDelete && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div 
+            className="card animate-scale-in" 
+            style={{ 
+              maxWidth: '400px', 
+              margin: '20px', 
+              padding: '24px', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '16px' 
+            }}
+          >
+            <h3 style={{ fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444', margin: 0 }}>
+              <AlertTriangle size={20} />
+              프로젝트 삭제 처리 선택
+            </h3>
+            <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: '1.5', margin: 0 }}>
+              '**{projectToDelete.name}**' 프로젝트를 어떻게 처리하시겠습니까? 
+              <br />
+              일반 카테고리로 강등 변경하면 기존에 프로젝트 전용으로 구성된 타임라인 목표(마일스톤)들이 모두 삭제됩니다.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+              <button 
+                className="btn btn-secondary" 
+                style={{ minHeight: '40px', fontWeight: 'bold' }}
+                onClick={() => handleConfirmDeleteProject(true)}
+              >
+                📂 일반 카테고리로 변경 (목표선 제거)
+              </button>
+              <button 
+                className="btn btn-primary" 
+                style={{ minHeight: '40px', background: '#ef4444', border: 'none', fontWeight: 'bold' }}
+                onClick={() => handleConfirmDeleteProject(false)}
+              >
+                🗑️ 영구히 완전 삭제 (카테고리 전체 제거)
+              </button>
+              <button 
+                className="btn" 
+                style={{ minHeight: '40px', background: 'var(--bg-active)', color: 'var(--text-primary)' }} 
+                onClick={() => {
+                  setProjectToDelete(null);
+                  setShowDeleteConfirmModal(false);
+                }}
+              >
+                취소
+              </button>
+            </div>
           </div>
         </div>
       )}
