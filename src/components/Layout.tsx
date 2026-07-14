@@ -45,11 +45,12 @@ export const Layout: React.FC<LayoutProps> = ({
           <span
             style={{
               fontFamily: '"Nanum Pen Script", cursive',
-              fontSize: '17px',
+              fontSize: '22px',
+              fontWeight: 'bold',
               color: 'var(--accent-color)',
-              marginLeft: '4px',
+              marginLeft: '6px',
               alignSelf: 'flex-end',
-              marginBottom: '1px',
+              marginBottom: '-1px',
             }}
           >
             더이상 미루지 마!
