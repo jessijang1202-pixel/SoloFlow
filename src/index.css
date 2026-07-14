@@ -120,9 +120,10 @@ input, textarea {
   user-select: text;
 }
 
-/* Mobile Frame Wrapper (Stretched full screen on all devices) */
+/* Mobile Frame Wrapper */
 #app-frame {
   width: 100%;
+  max-width: 480px;
   height: 100%;
   background-color: var(--bg-app);
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
@@ -131,6 +132,14 @@ input, textarea {
   flex-direction: column;
   overflow: hidden;
   transition: background-color var(--transition-normal);
+}
+
+@media (min-width: 481px) {
+  #app-frame {
+    height: 90vh;
+    border-radius: 40px;
+    border: 8px solid #27272a;
+  }
 }
 
 /* Header style with Glassmorphism */
