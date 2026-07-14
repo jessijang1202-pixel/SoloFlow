@@ -23,38 +23,27 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* App Header */}
       <header>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              background: 'linear-gradient(135deg, var(--accent-color), var(--accent-hover))',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontWeight: 'bold',
-              fontSize: '18px',
-            }}
-          >
-            S
-          </div>
-          <span style={{ fontSize: '18px', fontWeight: '800', letterSpacing: '-0.5px' }}>
+          <span style={{ fontSize: '27px', fontWeight: '800', letterSpacing: '-0.5px' }}>
             SoloFlow
           </span>
-          <span
+          <div
             style={{
+              background: 'linear-gradient(135deg, var(--accent-color), var(--accent-hover))',
+              color: '#ffe066', // Premium warm yellow
               fontFamily: '"Nanum Pen Script", cursive',
-              fontSize: '22px',
+              fontSize: '20px',
               fontWeight: 'bold',
-              color: 'var(--accent-color)',
+              padding: '3px 10px',
+              borderRadius: '8px',
               marginLeft: '6px',
-              alignSelf: 'flex-end',
-              marginBottom: '-1px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: 'var(--shadow-sm)',
             }}
           >
-            더이상 미루지 마!
-          </span>
+            더 이상 미루지마!
+          </div>
         </div>
         
         <button
