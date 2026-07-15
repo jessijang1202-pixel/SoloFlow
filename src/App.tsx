@@ -259,6 +259,10 @@ function App() {
     todoService.saveTasks(updatedTasks);
   };
 
+  const handleUpdateCategories = (updatedCategories: Category[]) => {
+    setCategories(updatedCategories);
+  };
+
   // --- Category Handlers ---
 
   const handleAddCategory = (name: string, color: string, isProject = false, description = '') => {
@@ -343,6 +347,7 @@ function App() {
           <CategoryView
             categories={categories}
             tasks={tasks}
+            onUpdateCategories={handleUpdateCategories}
           />
         );
       case 'settings':
@@ -358,6 +363,7 @@ function App() {
             isInstallable={isInstallable}
             onInstallClick={handleInstallApp}
             onLoginClick={() => setIsAuthModalOpen(true)}
+            onUpdateCategories={handleUpdateCategories}
           />
         );
       default:

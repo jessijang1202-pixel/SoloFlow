@@ -241,8 +241,15 @@ export const todoService = {
           });
 
           if (JSON.stringify(normalize(lt)) !== JSON.stringify(normalize(rt))) {
-            // Remote changes win, but ensure they are saved to local storage
-            hasChanges = true;
+            if (lt.synced === false) {
+              // Local version has pending updates! Upload local version to remote.
+              mergedMap.set(lt.id, lt);
+              localHasNew = true;
+              await this.saveTaskToSupabase(lt);
+            } else {
+              // Remote changes win, but ensure they are saved to local storage
+              hasChanges = true;
+            }
           }
         }
       }

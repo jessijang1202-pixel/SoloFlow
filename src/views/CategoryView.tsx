@@ -22,11 +22,13 @@ import { categoryService } from '../services/categoryService';
 interface CategoryViewProps {
   categories: Category[];
   tasks: Task[];
+  onUpdateCategories: (categories: Category[]) => void;
 }
 
 export const CategoryView: React.FC<CategoryViewProps> = ({
   categories,
   tasks,
+  onUpdateCategories,
 }) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [showUploadPanel, setShowUploadPanel] = useState(false);
@@ -82,7 +84,8 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
     // Sort by due date
     updatedMilestones.sort((a, b) => a.targetDate.localeCompare(b.targetDate));
 
-    categoryService.updateCategoryMilestones(selectedProjectId, updatedMilestones);
+    const updated = categoryService.updateCategoryMilestones(selectedProjectId, updatedMilestones);
+    onUpdateCategories(updated);
 
     // Reset states
     setPendingMilestones([]);
@@ -90,7 +93,6 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
     setShowUploadPanel(false);
     
     alert(`${append ? '기존 목표에 추가' : '기존 목표 삭제 후 새롭게'} 등록이 완료되었습니다.`);
-    window.location.reload(); // Simple reload to refresh top-level states
   };
 
   // Milestone manual additions
@@ -110,12 +112,12 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
       setPendingMilestones([newMsItem]);
       setShowConfirmModal(true);
     } else {
-      categoryService.addMilestone(selectedProjectId, newMsItem.title, newMsItem.targetDate, newMsItem.note);
+      const updated = categoryService.addMilestone(selectedProjectId, newMsItem.title, newMsItem.targetDate, newMsItem.note);
+      onUpdateCategories(updated);
       setNewMsTitle('');
       setNewMsNote('');
       setNewMsDate(getTodayString());
       setShowUploadPanel(false);
-      window.location.reload();
     }
   };
 
@@ -123,8 +125,8 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
   const handleDeleteMilestone = (milestoneId: string) => {
     if (!selectedProjectId) return;
     if (confirm('이 목표 단계를 삭제하시겠습니까?')) {
-      categoryService.deleteMilestone(selectedProjectId, milestoneId);
-      window.location.reload();
+      const updated = categoryService.deleteMilestone(selectedProjectId, milestoneId);
+      onUpdateCategories(updated);
     }
   };
 
@@ -154,12 +156,13 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
               setPendingMilestones(parsed);
               setShowConfirmModal(true);
             } else {
+              let updated = categories;
               parsed.forEach((item) => {
-                categoryService.addMilestone(selectedProjectId, item.title, item.targetDate, item.note);
+                updated = categoryService.addMilestone(selectedProjectId, item.title, item.targetDate, item.note);
               });
+              onUpdateCategories(updated);
               alert(`엑셀(CSV)에서 ${parsed.length}개의 목표가 성공적으로 등록되었습니다.`);
               setShowUploadPanel(false);
-              window.location.reload();
             }
           }
         } catch (err) {
@@ -191,12 +194,13 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
         setPendingMilestones(mockMilestones);
         setShowConfirmModal(true);
       } else {
+        let updated = categories;
         mockMilestones.forEach((item) => {
-          categoryService.addMilestone(selectedProjectId, item.title, item.targetDate, item.note);
+          updated = categoryService.addMilestone(selectedProjectId, item.title, item.targetDate, item.note);
         });
+        onUpdateCategories(updated);
         alert('📷 이미지 마일스톤 분석 완료!\n일정표 이미지 속 날짜와 키워드를 기반으로 5개의 단계별 타임라인이 자동 생성되었습니다.');
         setShowUploadPanel(false);
-        window.location.reload();
       }
     }, 2000);
   };

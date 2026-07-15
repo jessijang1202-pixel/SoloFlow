@@ -26,6 +26,7 @@ interface SettingsViewProps {
   isInstallable: boolean;
   onInstallClick: () => void;
   onLoginClick: () => void;
+  onUpdateCategories: (categories: Category[]) => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -39,6 +40,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   isInstallable,
   onInstallClick,
   onLoginClick,
+  onUpdateCategories,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'project' | 'category' | 'system'>('project');
@@ -126,7 +128,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
     if (convertToCategory) {
       // Downgrade to regular category
-      categoryService.toggleProjectMode(projectToDelete.id, false);
+      const updated = categoryService.toggleProjectMode(projectToDelete.id, false);
+      onUpdateCategories(updated);
       alert(`'${projectToDelete.name}' 프로젝트가 일반 카테고리로 변경되었습니다.`);
     } else {
       // Remove completely
@@ -136,7 +139,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
     setProjectToDelete(null);
     setShowDeleteConfirmModal(false);
-    window.location.reload(); // Simple reload to refresh all views
   };
 
   // Export tasks as JSON file

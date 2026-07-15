@@ -343,7 +343,14 @@ export const categoryService = {
           });
 
           if (JSON.stringify(normalize(lc)) !== JSON.stringify(normalize(rc))) {
-            hasChanges = true;
+            if (lc.synced === false) {
+              // Local version has pending updates! Upload local version to remote.
+              mergedMap.set(lc.id, lc);
+              localHasNew = true;
+              await this.saveCategoryToSupabase(lc);
+            } else {
+              hasChanges = true;
+            }
           }
         }
       }
