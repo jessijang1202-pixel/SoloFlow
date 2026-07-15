@@ -23,6 +23,9 @@ interface SettingsViewProps {
   onAddCategory: (name: string, color: string, isProject?: boolean, description?: string) => void;
   onDeleteCategory: (id: string) => void;
   onLogout: () => void;
+  isInstallable: boolean;
+  onInstallClick: () => void;
+  onLoginClick: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -33,19 +36,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onAddCategory,
   onDeleteCategory,
   onLogout,
+  isInstallable,
+  onInstallClick,
+  onLoginClick,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'project' | 'category' | 'system'>('project');
   
   const [userEmail, setUserEmail] = useState<string | null>(null);
   useEffect(() => {
-    if (supabase) {
-      supabase.auth.getUser().then(({ data }) => {
-        if (data?.user) {
-          setUserEmail(data.user.email || null);
-        }
-      });
-    }
+    if (!supabase) return;
+    
+    // Get initial user
+    supabase.auth.getUser().then(({ data }) => {
+      setUserEmail(data?.user?.email || null);
+    });
+
+    // Listen to changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email || null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Form States for Projects
@@ -500,22 +514,67 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             />
           </div>
 
+          {/* PWA App Installation Info/Button */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+              📱 모바일 앱 설치 (PWA)
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4', margin: 0 }}>
+              SoloFlow는 모바일 기기 홈 화면에 웹앱으로 설치하여 전체화면으로 더욱 편리하게 이용하실 수 있습니다.
+            </p>
+            {isInstallable ? (
+              <button 
+                onClick={onInstallClick}
+                className="btn btn-primary"
+                style={{ minHeight: '40px', fontSize: '13.5px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                앱 설치하기 (홈 화면에 추가)
+              </button>
+            ) : (
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', backgroundColor: 'var(--bg-app)', padding: '12px', borderRadius: 'var(--radius-sm)', lineHeight: '1.5' }}>
+                💡 <strong>이미 설치되었거나 간편 설치 미지원 환경인가요?</strong>
+                <ul style={{ paddingLeft: '16px', marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <li><strong>iOS Safari</strong>: 공유 버튼(사각형에 위 화살표)을 누르고 <strong>[홈 화면에 추가]</strong>를 누르면 단독 앱으로 설치됩니다.</li>
+                  <li><strong>Android Chrome</strong>: 메뉴 버튼(점 3개)을 누르고 <strong>[앱 설치]</strong> 또는 <strong>[홈 화면에 추가]</strong>를 선택하세요.</li>
+                  <li>설치하지 않으셔도 언제든지 모바일 웹 브라우저를 통해 똑같이 이용하실 수 있습니다.</li>
+                </ul>
+              </div>
+            )}
+          </div>
+
           {/* User Account Settings */}
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <h2 style={{ fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
               <LogOut size={18} style={{ color: 'var(--accent-color)' }} />
               계정 설정
             </h2>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4', margin: 0 }}>
-              현재 로그인 계정: <strong>{userEmail || '불러오는 중...'}</strong>
-            </p>
-            <button 
-              onClick={onLogout}
-              className="btn btn-secondary"
-              style={{ minHeight: '40px', fontSize: '13px', backgroundColor: 'var(--bg-active)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-            >
-              로그아웃
-            </button>
+            {userEmail ? (
+              <>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4', margin: 0 }}>
+                  현재 로그인 계정: <strong>{userEmail}</strong>
+                </p>
+                <button 
+                  onClick={onLogout}
+                  className="btn btn-secondary"
+                  style={{ minHeight: '40px', fontSize: '13px', backgroundColor: 'var(--bg-active)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  로그아웃
+                </button>
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4', margin: 0 }}>
+                  현재 로그인되어 있지 않습니다. 회원가입/로그인하시면 클라우드에 일정이 안전하게 실시간으로 동기화됩니다.
+                </p>
+                <button 
+                  onClick={onLoginClick}
+                  className="btn btn-primary"
+                  style={{ minHeight: '40px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  회원가입 / 로그인하기
+                </button>
+              </>
+            )}
           </div>
 
           {/* Dangerous Zone */}

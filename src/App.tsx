@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Layout from './components/Layout';
 import QuickAddModal from './components/QuickAddModal';
 import TodayView from './views/TodayView';
@@ -6,6 +6,7 @@ import WeeklyView from './views/WeeklyView';
 import CategoryView from './views/CategoryView';
 import SettingsView from './views/SettingsView';
 import AuthView from './views/AuthView';
+import { X } from 'lucide-react';
 
 import { todoService, getTodayString, sortTasks } from './services/todoService';
 import type { Task } from './services/todoService';
@@ -27,6 +28,54 @@ function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [user, setUser] = useState<User | null>(null);
+
+  // Guest & Auth pending states
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const pendingActionRef = useRef<((forceLocal?: boolean) => void) | null>(null);
+
+  // PWA installation states
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Check if already in standalone mode
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+      || (navigator as any).standalone;
+    
+    if (isStandalone) {
+      setIsInstallable(false);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User response to install prompt: ${outcome}`);
+      setDeferredPrompt(null);
+      setIsInstallable(false);
+    } else {
+      // iOS/other browser fallback
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      if (isIOS) {
+        alert("Safari 브라우저의 [공유] 버튼을 누른 후 [홈 화면에 추가]를 클릭하여 설치해 주세요!");
+      } else {
+        alert("이 브라우저에서는 자동 설치를 지원하지 않습니다. 브라우저 메뉴에서 '홈 화면에 추가' 또는 '앱 설치'를 클릭해 주세요.");
+      }
+    }
+  };
 
   // 1. Sync Theme
   useEffect(() => {
@@ -64,7 +113,6 @@ function App() {
 
   // 2. Initial Setup: Load categories, tasks and check for Auto-Rollover
   useEffect(() => {
-    if (!user) return;
 
     // A. Load Categories (Local First)
     const loadedCategories = categoryService.getCategories();
@@ -144,7 +192,20 @@ function App() {
     priority: 'high' | 'medium' | 'low';
     note: string;
     isWeeklyGoal: boolean;
+    isMonthlyGoal: boolean;
   }) => {
+    if (!user) {
+      pendingActionRef.current = (forceLocal = false) => {
+        const newTask = todoService.addTask(taskData);
+        setTasks(prev => [...prev, newTask]);
+        if (!forceLocal) {
+          alert('회원가입이 완료되어 일정이 동기화되었습니다!');
+        }
+      };
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     const newTask = todoService.addTask(taskData);
     setTasks(prev => [...prev, newTask]);
   };
@@ -201,6 +262,18 @@ function App() {
   // --- Category Handlers ---
 
   const handleAddCategory = (name: string, color: string, isProject = false, description = '') => {
+    if (!user) {
+      pendingActionRef.current = (forceLocal = false) => {
+        categoryService.addCategory(name, color, isProject, description);
+        setCategories(categoryService.getCategories());
+        if (!forceLocal) {
+          alert('회원가입이 완료되어 카테고리가 동기화되었습니다!');
+        }
+      };
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     categoryService.addCategory(name, color, isProject, description);
     setCategories(categoryService.getCategories());
   };
@@ -282,6 +355,9 @@ function App() {
             onAddCategory={handleAddCategory}
             onDeleteCategory={handleDeleteCategory}
             onLogout={handleLogout}
+            isInstallable={isInstallable}
+            onInstallClick={handleInstallApp}
+            onLoginClick={() => setIsAuthModalOpen(true)}
           />
         );
       default:
@@ -296,14 +372,6 @@ function App() {
         );
     }
   };
-
-  if (!user) {
-    return (
-      <div id="app-frame" className="animate-fade-in" style={{ justifyContent: 'center' }}>
-        <AuthView onAuthSuccess={() => {}} />
-      </div>
-    );
-  }
 
   return (
     <>
@@ -323,6 +391,64 @@ function App() {
           onAdd={handleAddTask}
         />
       </Layout>
+
+      {/* Auth Modal Overlay */}
+      {isAuthModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 2000 }} onClick={() => setIsAuthModalOpen(false)}>
+          <div 
+            className="bottom-sheet animate-slide-up" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ 
+              maxWidth: '440px', 
+              margin: '0 auto',
+              borderTopLeftRadius: 'var(--radius-lg)', 
+              borderTopRightRadius: 'var(--radius-lg)',
+              background: 'var(--bg-container)',
+              border: '1px solid var(--border-color)',
+              borderBottom: 'none',
+              boxShadow: '0 -10px 25px rgba(0, 0, 0, 0.5)',
+            }}
+          >
+            <div className="bottom-sheet-header">
+              <h2 className="bottom-sheet-title">계정 연동 및 저장</h2>
+              <button className="close-btn" onClick={() => setIsAuthModalOpen(false)} aria-label="Close modal">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', padding: '0 24px', margin: '0 0 16px 0', lineHeight: '1.5', textAlign: 'center' }}>
+              회원가입 또는 로그인 시 작성하신 일정이 클라우드에 안전하게 연동 및 백업되어 다른 기기에서도 확인하실 수 있습니다.
+            </p>
+
+            <div style={{ padding: '0 24px 24px 24px', overflowY: 'auto', maxHeight: '70vh' }}>
+              <AuthView 
+                onAuthSuccess={() => {
+                  setIsAuthModalOpen(false);
+                  if (pendingActionRef.current) {
+                    pendingActionRef.current(false);
+                    pendingActionRef.current = null;
+                  }
+                }} 
+              />
+              
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ width: '100%', minHeight: '44px', marginTop: '12px', fontSize: '14px' }}
+                onClick={() => {
+                  setIsAuthModalOpen(false);
+                  if (pendingActionRef.current) {
+                    pendingActionRef.current(true);
+                    pendingActionRef.current = null;
+                  }
+                }}
+              >
+                로그인 없이 그냥 저장하기 (기기 로컬에 저장)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

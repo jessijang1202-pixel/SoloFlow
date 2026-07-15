@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -7,12 +7,66 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SoloFlow" />
+    <meta name="theme-color" content="#0b0f19" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="description" content="SoloFlow - 1인 사업가 및 콘텐츠 크리에이터를 위한 모바일 퍼스트 데일리 실행 관리 앱. 미완료 업무 자동 이월 및 카테고리 필터링을 지원합니다." />
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Nanum+Pen+Script&display=swap" rel="stylesheet">
+    
     <title>SoloFlow - 데일리 실행 관리 앱</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100vw;
+        background-color: #0b0f19;
+        font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        text-align: center;
+        user-select: none;
+        -webkit-user-select: none;
+      ">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <span style="font-size: 36px; font-weight: 800; letter-spacing: -1px; color: #f9fafb;">
+            SoloFlow
+          </span>
+          <span style="
+            font-family: 'Nanum Pen Script', cursive, sans-serif;
+            font-size: 28px;
+            font-weight: bold;
+            color: #a78bfa;
+            transform: rotate(-5deg);
+            display: inline-block;
+          ">
+            미루지 마!
+          </span>
+        </div>
+        <p style="font-size: 14px; color: #6b7280; margin-top: 8px; font-weight: 400;">
+          친구들과 함께 쓰는 나만의 스마트 스케줄러
+        </p>
+        <div style="
+          margin-top: 32px;
+          width: 28px;
+          height: 28px;
+          border: 2.5px solid rgba(167, 139, 250, 0.15);
+          border-top-color: #a78bfa;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        "></div>
+      </div>
+      <style>
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      </style>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
