@@ -70,7 +70,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
         titleInputRef.current?.focus();
       }, 150);
     }
-  }, [isOpen, taskToEdit, categories]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const todayDate = new Date();
   const tomorrowDate = new Date(todayDate);
