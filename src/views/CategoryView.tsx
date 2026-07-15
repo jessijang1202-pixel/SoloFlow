@@ -665,29 +665,92 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
             const totalProjTasks = tasks.filter(t => t.category === proj.id);
             const completedProjTasks = totalProjTasks.filter(t => t.status === 'done').length;
             const progress = totalProjTasks.length > 0 ? Math.round((completedProjTasks / totalProjTasks.length) * 100) : 0;
-            const milestonesCount = proj.milestones?.length || 0;
+            const milestonesList = proj.milestones || [];
+            const milestonesCount = milestonesList.length;
 
             return (
               <div 
                 key={proj.id} 
                 className="project-card"
                 onClick={() => setSelectedProjectId(proj.id)}
+                style={{ cursor: 'pointer' }}
               >
-                <div className="project-card-header">
-                  <div className="project-card-title">
+                <div className="project-card-header" style={{ marginBottom: '8px' }}>
+                  <div className="project-card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
                     <Briefcase size={18} style={{ color: proj.color }} />
                     {proj.name}
                   </div>
-                  <span className="badge" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
-                    목표 {milestonesCount}개
-                  </span>
+                  
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedProjectId(proj.id);
+                      setShowUploadPanel(true);
+                    }}
+                    className="btn btn-primary"
+                    style={{ 
+                      minHeight: '28px', 
+                      height: '28px',
+                      padding: '0 10px',
+                      fontSize: '11px',
+                      background: 'linear-gradient(135deg, var(--accent-color), var(--accent-hover))',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: 'bold',
+                    }}
+                  >
+                    <Edit3 size={11} />
+                    {milestonesCount > 0 ? '목표 수정' : '목표 관리'}
+                  </button>
                 </div>
 
                 {proj.description && (
-                  <p className="project-card-desc">{proj.description}</p>
+                  <p className="project-card-desc" style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                    {proj.description}
+                  </p>
                 )}
 
-                <div className="stat-progress-container" style={{ marginTop: '10px' }}>
+                {/* Milestones Preview List */}
+                <div 
+                  style={{ 
+                    margin: '10px 0', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '4px', 
+                    backgroundColor: 'rgba(255, 255, 255, 0.02)', 
+                    border: '1px solid var(--border-color)',
+                    padding: '8px 12px', 
+                    borderRadius: 'var(--radius-sm)' 
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                    🎯 단계별 설정 목표 ({milestonesCount}개)
+                  </div>
+                  {milestonesList.length === 0 ? (
+                    <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontStyle: 'italic', padding: '2px 0' }}>
+                      설정된 목표가 없습니다. 우측의 [목표 관리] 버튼을 눌러 등록해 주세요.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {milestonesList.map((ms, idx) => (
+                        <div key={ms.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>
+                            {idx + 1}. {ms.title}
+                          </span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '10.5px' }}>{ms.targetDate}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="stat-progress-container" style={{ marginTop: '8px' }}>
                   <div className="stat-progress-bar-bg">
                     <div
                       className="stat-progress-bar-fill"
