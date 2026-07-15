@@ -1,5 +1,9 @@
 {
+  "cleanUrls": true,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/((?!landing.html|assets/|favicon.svg|manifest.json|sw.js).*)$",
+      "destination": "/index.html"
+    }
   ]
 }

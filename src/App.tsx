@@ -6,7 +6,6 @@ import WeeklyView from './views/WeeklyView';
 import CategoryView from './views/CategoryView';
 import SettingsView from './views/SettingsView';
 import AuthView from './views/AuthView';
-import LandingView from './views/LandingView';
 import { X } from 'lucide-react';
 
 import { todoService, getTodayString, sortTasks } from './services/todoService';
@@ -32,12 +31,6 @@ function App() {
 
   // Simple client-side routing state
   const [currentPath, setCurrentPath] = useState<string>(window.location.pathname);
-
-  // Navigate helper
-  const navigate = (path: string) => {
-    window.history.pushState({}, '', path);
-    setCurrentPath(path);
-  };
 
   useEffect(() => {
     const handlePopState = () => {
@@ -410,7 +403,7 @@ function App() {
             onInstallClick={handleInstallApp}
             onLoginClick={() => setIsAuthModalOpen(true)}
             onUpdateCategories={handleUpdateCategories}
-            onNavigateToLanding={() => navigate('/landing')}
+            onNavigateToLanding={() => { window.location.href = '/landing.html'; }}
           />
         );
       default:
@@ -427,8 +420,9 @@ function App() {
     }
   };
 
-  if (currentPath === '/landing') {
-    return <LandingView onNavigateToApp={() => navigate('/')} />;
+  if (currentPath === '/landing' || currentPath === '/landing.html') {
+    window.location.href = '/landing.html';
+    return null;
   }
 
   return (
@@ -439,7 +433,7 @@ function App() {
         onQuickAddClick={() => setIsQuickAddOpen(true)}
         theme={theme}
         toggleTheme={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-        onLogoClick={() => navigate('/landing')}
+        onLogoClick={() => { window.location.href = '/landing.html'; }}
       >
         {renderActiveView()}
 
