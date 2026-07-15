@@ -29,6 +29,9 @@ function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [user, setUser] = useState<User | null>(null);
 
+  // Edit task states
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+
   // Guest & Auth pending states
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const pendingActionRef = useRef<((forceLocal?: boolean) => void) | null>(null);
@@ -220,6 +223,28 @@ function App() {
     setTasks(updatedTasks);
   };
 
+  const handleUpdateTask = (updatedTask: Task) => {
+    if (!user) {
+      pendingActionRef.current = (forceLocal = false) => {
+        const updatedTasks = todoService.updateTask(updatedTask);
+        setTasks(updatedTasks);
+        if (!forceLocal) {
+          alert('회원가입이 완료되어 수정 사항이 동기화되었습니다!');
+        }
+      };
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    const updatedTasks = todoService.updateTask(updatedTask);
+    setTasks(updatedTasks);
+  };
+
+  const handleEditClick = (task: Task) => {
+    setTaskToEdit(task);
+    setIsQuickAddOpen(true);
+  };
+
   // Persists re-ordered items by swiping order values in the array
   const handleMoveTask = (id: string, direction: 'up' | 'down') => {
     const todayStr = getTodayString();
@@ -332,6 +357,7 @@ function App() {
             onToggleTask={handleToggleTask}
             onDeleteTask={handleDeleteTask}
             onMoveTask={handleMoveTask}
+            onEditTask={handleEditClick}
           />
         );
       case 'weekly':
@@ -374,6 +400,7 @@ function App() {
             onToggleTask={handleToggleTask}
             onDeleteTask={handleDeleteTask}
             onMoveTask={handleMoveTask}
+            onEditTask={handleEditClick}
           />
         );
     }
@@ -392,9 +419,14 @@ function App() {
 
         <QuickAddModal
           isOpen={isQuickAddOpen}
-          onClose={() => setIsQuickAddOpen(false)}
+          onClose={() => {
+            setIsQuickAddOpen(false);
+            setTaskToEdit(null);
+          }}
           categories={categories}
           onAdd={handleAddTask}
+          taskToEdit={taskToEdit}
+          onEdit={handleUpdateTask}
         />
       </Layout>
 

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowUp, ArrowDown, Trash2, Calendar, AlertCircle } from 'lucide-react';
+import { ArrowUp, ArrowDown, Trash2, Calendar, AlertCircle, Edit2 } from 'lucide-react';
 import { getTodayString, sortTasks } from '../services/todoService';
 import type { Task } from '../services/todoService';
 import type { Category } from '../services/categoryService';
@@ -10,6 +10,7 @@ interface TodayViewProps {
   onToggleTask: (id: string) => void;
   onDeleteTask: (id: string) => void;
   onMoveTask: (id: string, direction: 'up' | 'down') => void;
+  onEditTask: (task: Task) => void;
 }
 
 export const TodayView: React.FC<TodayViewProps> = ({
@@ -18,6 +19,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
   onToggleTask,
   onDeleteTask,
   onMoveTask,
+  onEditTask,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -255,6 +257,21 @@ export const TodayView: React.FC<TodayViewProps> = ({
                     <ArrowDown size={16} />
                   </button>
                   <button
+                    onClick={() => onEditTask(task)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      opacity: 0.8,
+                      padding: '4px',
+                      cursor: 'pointer',
+                      marginTop: '4px',
+                    }}
+                    aria-label="Edit Task"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button
                     onClick={() => {
                       if (confirm('이 할 일을 삭제하시겠습니까?')) {
                         onDeleteTask(task.id);
@@ -322,8 +339,22 @@ export const TodayView: React.FC<TodayViewProps> = ({
                   </div>
                 </div>
 
-                {/* Delete Button Only */}
-                <div style={{ marginLeft: '8px' }}>
+                {/* Edit & Delete Buttons */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px' }}>
+                  <button
+                    onClick={() => onEditTask(task)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      opacity: 0.8,
+                      padding: '6px',
+                      cursor: 'pointer',
+                    }}
+                    aria-label="Edit Task"
+                  >
+                    <Edit2 size={16} />
+                  </button>
                   <button
                     onClick={() => {
                       if (confirm('이 할 일을 삭제하시겠습니까?')) {

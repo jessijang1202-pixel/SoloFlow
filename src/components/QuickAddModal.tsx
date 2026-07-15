@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Calendar as CalIcon } from 'lucide-react';
 import type { Category } from '../services/categoryService';
 import { getTodayString } from '../services/todoService';
+import type { Task } from '../services/todoService';
 
 interface QuickAddModalProps {
   isOpen: boolean;
@@ -16,6 +17,8 @@ interface QuickAddModalProps {
     isWeeklyGoal: boolean;
     isMonthlyGoal: boolean;
   }) => void;
+  taskToEdit?: Task | null;
+  onEdit?: (updatedTask: Task) => void;
 }
 
 export const QuickAddModal: React.FC<QuickAddModalProps> = ({
@@ -23,6 +26,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   onClose,
   categories,
   onAdd,
+  taskToEdit = null,
+  onEdit,
 }) => {
   const [title, setTitle] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -34,21 +39,30 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
 
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  // Set default category on open
+  // Set default/edit values on open
   useEffect(() => {
     if (isOpen) {
-      // Reset inputs
-      setTitle('');
-      setDueDate(getTodayString());
-      setPriority('medium');
-      setNote('');
-      setIsWeeklyGoal(false);
-      setIsMonthlyGoal(false);
-      
-      if (categories.length > 0) {
-        setCategoryId(categories[0].id);
+      if (taskToEdit) {
+        setTitle(taskToEdit.title);
+        setCategoryId(taskToEdit.category);
+        setDueDate(taskToEdit.dueDate);
+        setPriority(taskToEdit.priority);
+        setNote(taskToEdit.note || '');
+        setIsWeeklyGoal(taskToEdit.isWeeklyGoal || false);
+        setIsMonthlyGoal(taskToEdit.isMonthlyGoal || false);
       } else {
-        setCategoryId('');
+        setTitle('');
+        setDueDate(getTodayString());
+        setPriority('medium');
+        setNote('');
+        setIsWeeklyGoal(false);
+        setIsMonthlyGoal(false);
+        
+        if (categories.length > 0) {
+          setCategoryId(categories[0].id);
+        } else {
+          setCategoryId('');
+        }
       }
       
       // Auto focus
@@ -56,8 +70,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
         titleInputRef.current?.focus();
       }, 150);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, taskToEdit, categories]);
 
   const todayDate = new Date();
   const tomorrowDate = new Date(todayDate);
@@ -70,15 +83,28 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     e.preventDefault();
     if (!title.trim()) return;
 
-    onAdd({
-      title: title.trim(),
-      category: categoryId,
-      dueDate,
-      priority,
-      note: note.trim(),
-      isWeeklyGoal,
-      isMonthlyGoal,
-    });
+    if (taskToEdit && onEdit) {
+      onEdit({
+        ...taskToEdit,
+        title: title.trim(),
+        category: categoryId,
+        dueDate,
+        priority,
+        note: note.trim(),
+        isWeeklyGoal,
+        isMonthlyGoal,
+      });
+    } else {
+      onAdd({
+        title: title.trim(),
+        category: categoryId,
+        dueDate,
+        priority,
+        note: note.trim(),
+        isWeeklyGoal,
+        isMonthlyGoal,
+      });
+    }
     
     onClose();
   };
@@ -136,7 +162,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       >
         {/* Header */}
         <div className="bottom-sheet-header">
-          <h2 className="bottom-sheet-title">새로운 할 일 추가</h2>
+          <h2 className="bottom-sheet-title">{taskToEdit ? '일정 수정하기' : '새로운 할 일 추가'}</h2>
           <button className="close-btn" onClick={onClose} aria-label="Close modal">
             <X size={24} />
           </button>
@@ -278,7 +304,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             style={{ width: '100%', marginTop: '8px', fontSize: '16px' }}
             disabled={!title.trim()}
           >
-            일정 등록하기
+            {taskToEdit ? '일정 수정 완료' : '일정 등록하기'}
           </button>
         </form>
       </div>
