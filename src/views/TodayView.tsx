@@ -218,78 +218,83 @@ export const TodayView: React.FC<TodayViewProps> = ({
                   </div>
                 </div>
 
-                {/* Action Buttons for Mobile Reordering / Delete */}
+                {/* Action Buttons for Mobile Reordering / Edit & Delete */}
                 <div
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: '4px',
+                    gap: '6px',
                     marginLeft: '8px',
                   }}
                 >
-                  <button
-                    onClick={() => onMoveTask(task.id, 'up')}
-                    disabled={index === 0}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: index === 0 ? 'var(--border-color)' : 'var(--text-muted)',
-                      padding: '4px',
-                      cursor: 'pointer',
-                    }}
-                    aria-label="Move Up"
-                  >
-                    <ArrowUp size={16} />
-                  </button>
-                  <button
-                    onClick={() => onMoveTask(task.id, 'down')}
-                    disabled={index === filteredTasks.length - 1}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: index === filteredTasks.length - 1 ? 'var(--border-color)' : 'var(--text-muted)',
-                      padding: '4px',
-                      cursor: 'pointer',
-                    }}
-                    aria-label="Move Down"
-                  >
-                    <ArrowDown size={16} />
-                  </button>
-                  <button
-                    onClick={() => onEditTask(task)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--text-muted)',
-                      opacity: 0.8,
-                      padding: '4px',
-                      cursor: 'pointer',
-                      marginTop: '4px',
-                    }}
-                    aria-label="Edit Task"
-                  >
-                    <Edit2 size={16} />
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm('이 할 일을 삭제하시겠습니까?')) {
-                        onDeleteTask(task.id);
-                      }
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#ef4444',
-                      opacity: 0.7,
-                      padding: '6px',
-                      cursor: 'pointer',
-                      marginTop: '4px',
-                    }}
-                    aria-label="Delete Task"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  {/* Up / Down arrows stack vertically */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <button
+                      onClick={() => onMoveTask(task.id, 'up')}
+                      disabled={index === 0}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: index === 0 ? 'var(--border-color)' : 'var(--text-muted)',
+                        padding: '2px',
+                        cursor: 'pointer',
+                      }}
+                      aria-label="Move Up"
+                    >
+                      <ArrowUp size={15} />
+                    </button>
+                    <button
+                      onClick={() => onMoveTask(task.id, 'down')}
+                      disabled={index === filteredTasks.length - 1}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: index === filteredTasks.length - 1 ? 'var(--border-color)' : 'var(--text-muted)',
+                        padding: '2px',
+                        cursor: 'pointer',
+                      }}
+                      aria-label="Move Down"
+                    >
+                      <ArrowDown size={15} />
+                    </button>
+                  </div>
+
+                  {/* Edit and Delete sit horizontally side-by-side */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <button
+                      onClick={() => onEditTask(task)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        opacity: 0.8,
+                        padding: '4px',
+                        cursor: 'pointer',
+                      }}
+                      aria-label="Edit Task"
+                    >
+                      <Edit2 size={15} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm('이 할 일을 삭제하시겠습니까?')) {
+                          onDeleteTask(task.id);
+                        }
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#ef4444',
+                        opacity: 0.7,
+                        padding: '4px',
+                        cursor: 'pointer',
+                      }}
+                      aria-label="Delete Task"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
