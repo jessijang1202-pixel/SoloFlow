@@ -8,6 +8,7 @@ interface LayoutProps {
   onQuickAddClick: () => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+  onLogoClick?: () => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({
@@ -17,12 +18,22 @@ export const Layout: React.FC<LayoutProps> = ({
   onQuickAddClick,
   theme,
   toggleTheme,
+  onLogoClick,
 }) => {
   return (
     <div id="app-frame" className="animate-fade-in">
       {/* App Header */}
       <header>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div 
+          onClick={onLogoClick}
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            cursor: onLogoClick ? 'pointer' : 'default',
+            userSelect: 'none'
+          }}
+        >
           <span style={{ fontSize: '27px', fontWeight: '800', letterSpacing: '-0.5px' }}>
             SoloFlow
           </span>

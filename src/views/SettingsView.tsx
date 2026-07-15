@@ -27,6 +27,7 @@ interface SettingsViewProps {
   onInstallClick: () => void;
   onLoginClick: () => void;
   onUpdateCategories: (categories: Category[]) => void;
+  onNavigateToLanding?: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -41,6 +42,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onInstallClick,
   onLoginClick,
   onUpdateCategories,
+  onNavigateToLanding,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'project' | 'category' | 'system'>('project');
@@ -593,6 +595,33 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </ul>
               </div>
             )}
+          </div>
+
+          {/* Service Landing Intro Card */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+              ✨ SoloFlow 서비스 소개
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4', margin: 0 }}>
+              프로젝트가 많은 극 J 유저들을 위한 SoloFlow만의 특별한 기능(Plan vs Actual 시뮬레이션, 자동 이월 등)과 계획 성향 테스트를 만나보세요.
+            </p>
+            <button 
+              onClick={onNavigateToLanding}
+              className="btn btn-primary"
+              style={{ 
+                minHeight: '40px', 
+                fontSize: '13px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                gap: '6px',
+                background: 'linear-gradient(135deg, var(--accent-color), var(--accent-hover))',
+                color: 'white',
+                border: 'none'
+              }}
+            >
+              소개 및 성향 테스트 페이지로 이동
+            </button>
           </div>
 
           {/* User Account Settings */}

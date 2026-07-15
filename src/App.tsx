@@ -6,6 +6,7 @@ import WeeklyView from './views/WeeklyView';
 import CategoryView from './views/CategoryView';
 import SettingsView from './views/SettingsView';
 import AuthView from './views/AuthView';
+import LandingView from './views/LandingView';
 import { X } from 'lucide-react';
 
 import { todoService, getTodayString, sortTasks } from './services/todoService';
@@ -28,6 +29,25 @@ function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [user, setUser] = useState<User | null>(null);
+
+  // Simple client-side routing state
+  const [currentPath, setCurrentPath] = useState<string>(window.location.pathname);
+
+  // Navigate helper
+  const navigate = (path: string) => {
+    window.history.pushState({}, '', path);
+    setCurrentPath(path);
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
 
   // Edit task states
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
@@ -390,6 +410,7 @@ function App() {
             onInstallClick={handleInstallApp}
             onLoginClick={() => setIsAuthModalOpen(true)}
             onUpdateCategories={handleUpdateCategories}
+            onNavigateToLanding={() => navigate('/landing')}
           />
         );
       default:
@@ -406,6 +427,10 @@ function App() {
     }
   };
 
+  if (currentPath === '/landing') {
+    return <LandingView onNavigateToApp={() => navigate('/')} />;
+  }
+
   return (
     <>
       <Layout
@@ -414,6 +439,7 @@ function App() {
         onQuickAddClick={() => setIsQuickAddOpen(true)}
         theme={theme}
         toggleTheme={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+        onLogoClick={() => navigate('/landing')}
       >
         {renderActiveView()}
 
