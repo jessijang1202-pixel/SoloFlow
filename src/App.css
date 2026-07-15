@@ -291,6 +291,7 @@
 
 .bottom-sheet {
   width: 100%;
+  max-width: 480px; /* Force mobile width even in PC view */
   background-color: var(--bg-container);
   border-top-left-radius: var(--radius-lg);
   border-top-right-radius: var(--radius-lg);

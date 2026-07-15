@@ -107,42 +107,37 @@ export const todoService = {
   },
 
   // Auto-Rollover Logic: Find incomplete past tasks and move them to Today
-  checkAndRolloverTasks(): { tasks: Task[]; rolloverCount: number } {
+  checkAndRolloverTasks(tasksInput?: Task[]): { tasks: Task[]; rolloverCount: number } {
     const todayStr = getTodayString();
-    const lastOpened = localStorage.getItem('soloflow_last_opened_date');
-    const tasks = this.getTasks();
+    const tasks = tasksInput || this.getTasks();
     let rolloverCount = 0;
 
-    // Check if the day has changed or it's first run
-    if (!lastOpened || lastOpened < todayStr) {
-      const updatedTasks = tasks.map(task => {
-        // If task is incomplete and dueDate is in the past (before today)
-        if ((task.status === 'todo' || task.status === 'rollover') && task.dueDate < todayStr && !task.isWeeklyGoal) {
-          rolloverCount++;
-          return {
-            ...task,
-            status: 'rollover' as const,
-            rolledOverFrom: task.rolledOverFrom || task.dueDate, // Keep track of the original due date
-            dueDate: todayStr, // Update due date to today
-            synced: false,
-          };
-        }
-        return task;
-      });
-
-      if (rolloverCount > 0) {
-        this.saveTasks(updatedTasks);
-        updatedTasks.forEach((task, idx) => {
-          if (task !== tasks[idx]) {
-            this.saveTaskToSupabase(task);
-          }
-        });
+    const updatedTasks = tasks.map(task => {
+      // If task is incomplete and dueDate is in the past (before today)
+      if ((task.status === 'todo' || task.status === 'rollover') && task.dueDate < todayStr && !task.isWeeklyGoal) {
+        rolloverCount++;
+        return {
+          ...task,
+          status: 'rollover' as const,
+          rolledOverFrom: task.rolledOverFrom || task.dueDate, // Keep track of the original due date
+          dueDate: todayStr, // Update due date to today
+          synced: false,
+        };
       }
-      localStorage.setItem('soloflow_last_opened_date', todayStr);
-      return { tasks: rolloverCount > 0 ? updatedTasks : tasks, rolloverCount };
+      return task;
+    });
+
+    if (rolloverCount > 0) {
+      this.saveTasks(updatedTasks);
+      updatedTasks.forEach((task, idx) => {
+        if (task !== tasks[idx]) {
+          this.saveTaskToSupabase(task);
+        }
+      });
     }
 
-    return { tasks, rolloverCount: 0 };
+    localStorage.setItem('soloflow_last_opened_date', todayStr);
+    return { tasks: rolloverCount > 0 ? updatedTasks : tasks, rolloverCount };
   },
 
   // Update reorder inside a specific due date group

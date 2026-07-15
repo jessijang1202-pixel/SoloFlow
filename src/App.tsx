@@ -5,12 +5,14 @@ import TodayView from './views/TodayView';
 import WeeklyView from './views/WeeklyView';
 import CategoryView from './views/CategoryView';
 import SettingsView from './views/SettingsView';
+import AuthView from './views/AuthView';
 
 import { todoService, getTodayString, sortTasks } from './services/todoService';
 import type { Task } from './services/todoService';
 import { categoryService } from './services/categoryService';
 import type { Category } from './services/categoryService';
 import { supabase } from './services/supabaseClient';
+import type { User } from '@supabase/supabase-js';
 
 import './App.css';
 
@@ -24,6 +26,7 @@ function App() {
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [user, setUser] = useState<User | null>(null);
 
   // 1. Sync Theme
   useEffect(() => {
@@ -31,8 +34,38 @@ function App() {
     localStorage.setItem('soloflow_theme', theme);
   }, [theme]);
 
+  // 1.5. Auth Session Listener
+  useEffect(() => {
+    if (!supabase) return;
+
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      if (event === 'SIGNED_OUT') {
+        // Clear all local states and storage on sign out
+        localStorage.removeItem('soloflow_tasks');
+        localStorage.removeItem('soloflow_categories');
+        localStorage.removeItem('soloflow_last_opened_date');
+        setTasks([]);
+        setCategories([]);
+        setActiveTab('today');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   // 2. Initial Setup: Load categories, tasks and check for Auto-Rollover
   useEffect(() => {
+    if (!user) return;
+
     // A. Load Categories (Local First)
     const loadedCategories = categoryService.getCategories();
     setCategories(loadedCategories);
@@ -57,7 +90,9 @@ function App() {
         setCategories(syncedCats);
 
         const syncedTasks = await todoService.syncWithSupabase();
-        setTasks(syncedTasks);
+        // Always verify and rollover synced past tasks to today
+        const { tasks: rolledOverTasks } = todoService.checkAndRolloverTasks(syncedTasks);
+        setTasks(rolledOverTasks);
       } catch (err) {
         console.error('Database sync failed:', err);
       }
@@ -98,7 +133,7 @@ function App() {
         subscription.unsubscribe();
       }
     };
-  }, []);
+  }, [user]);
 
   // --- Task Handlers ---
 
@@ -177,9 +212,18 @@ function App() {
 
   // --- Data & Backup Actions ---
 
-  const handleImportData = (importedTasks: Task[]) => {
-    setTasks(importedTasks);
-    todoService.saveTasks(importedTasks);
+  const handleImportData = async (importedTasks: Task[]) => {
+    const preparedTasks = importedTasks.map(t => ({ ...t, synced: false }));
+    setTasks(preparedTasks);
+    todoService.saveTasks(preparedTasks);
+    
+    // Upload each task sequentially
+    for (const task of preparedTasks) {
+      await todoService.saveTaskToSupabase(task);
+    }
+    // Deep sync to retrieve correct state
+    const syncedTasks = await todoService.syncWithSupabase();
+    setTasks(syncedTasks);
   };
 
   const handleClearAllData = () => {
@@ -192,6 +236,12 @@ function App() {
     setTasks([]);
     setCategories(categoryService.getCategories()); // reload system categories
     setActiveTab('today');
+  };
+
+  const handleLogout = async () => {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
   };
 
   // Render view depending on activeTab state
@@ -231,6 +281,7 @@ function App() {
             categories={categories}
             onAddCategory={handleAddCategory}
             onDeleteCategory={handleDeleteCategory}
+            onLogout={handleLogout}
           />
         );
       default:
@@ -246,6 +297,14 @@ function App() {
     }
   };
 
+  if (!user) {
+    return (
+      <div id="app-frame" className="animate-fade-in" style={{ justifyContent: 'center' }}>
+        <AuthView onAuthSuccess={() => {}} />
+      </div>
+    );
+  }
+
   return (
     <>
       <Layout
@@ -256,14 +315,14 @@ function App() {
         toggleTheme={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
       >
         {renderActiveView()}
-      </Layout>
 
-      <QuickAddModal
-        isOpen={isQuickAddOpen}
-        onClose={() => setIsQuickAddOpen(false)}
-        categories={categories}
-        onAdd={handleAddTask}
-      />
+        <QuickAddModal
+          isOpen={isQuickAddOpen}
+          onClose={() => setIsQuickAddOpen(false)}
+          categories={categories}
+          onAdd={handleAddTask}
+        />
+      </Layout>
     </>
   );
 }

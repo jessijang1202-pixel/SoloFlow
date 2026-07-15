@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { 
   Download, 
   Upload, 
@@ -7,11 +7,13 @@ import {
   Plus, 
   Lock, 
   AlertTriangle, 
-  RefreshCw 
+  RefreshCw,
+  LogOut
 } from 'lucide-react';
 import type { Task } from '../services/todoService';
 import type { Category } from '../services/categoryService';
 import { categoryService } from '../services/categoryService';
+import { supabase } from '../services/supabaseClient';
 
 interface SettingsViewProps {
   tasks: Task[];
@@ -20,6 +22,7 @@ interface SettingsViewProps {
   categories: Category[];
   onAddCategory: (name: string, color: string, isProject?: boolean, description?: string) => void;
   onDeleteCategory: (id: string) => void;
+  onLogout: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -29,9 +32,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   categories,
   onAddCategory,
   onDeleteCategory,
+  onLogout,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'project' | 'category' | 'system'>('project');
+  
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  useEffect(() => {
+    if (supabase) {
+      supabase.auth.getUser().then(({ data }) => {
+        if (data?.user) {
+          setUserEmail(data.user.email || null);
+        }
+      });
+    }
+  }, []);
 
   // Form States for Projects
   const [newProjName, setNewProjName] = useState('');
@@ -483,6 +498,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               accept=".json"
               onChange={handleImportData}
             />
+          </div>
+
+          {/* User Account Settings */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+              <LogOut size={18} style={{ color: 'var(--accent-color)' }} />
+              계정 설정
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4', margin: 0 }}>
+              현재 로그인 계정: <strong>{userEmail || '불러오는 중...'}</strong>
+            </p>
+            <button 
+              onClick={onLogout}
+              className="btn btn-secondary"
+              style={{ minHeight: '40px', fontSize: '13px', backgroundColor: 'var(--bg-active)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+            >
+              로그아웃
+            </button>
           </div>
 
           {/* Dangerous Zone */}
