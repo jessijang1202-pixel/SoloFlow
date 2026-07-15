@@ -334,16 +334,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </div>
                   </div>
                   
-                  <button
-                    onClick={() => {
-                      setProjectToDelete(proj);
-                      setShowDeleteConfirmModal(true);
-                    }}
-                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
-                    aria-label="Delete project"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      onClick={() => {
+                        if (confirm(`'${proj.name}' 프로젝트를 일반 카테고리로 전환하시겠습니까? (설정된 마일스톤 목표들은 제거됩니다)`)) {
+                          const updated = categoryService.toggleProjectMode(proj.id, false);
+                          onUpdateCategories(updated);
+                          alert(`'${proj.name}' 프로젝트가 일반 카테고리로 전환되었습니다.`);
+                        }
+                      }}
+                      className="btn btn-secondary"
+                      style={{
+                        minHeight: '28px',
+                        height: '28px',
+                        padding: '0 8px',
+                        fontSize: '11px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      📂 카테고리 전환
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setProjectToDelete(proj);
+                        setShowDeleteConfirmModal(true);
+                      }}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                      aria-label="Delete project"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -432,24 +458,49 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   )}
                 </div>
                 
-                {cat.isSystem ? (
-                  <span style={{ color: 'var(--text-muted)', padding: '4px' }}>
-                    <Lock size={16} style={{ opacity: 0.5 }} />
-                  </span>
-                ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <button
                     onClick={() => {
-                      if (confirm(`'${cat.name}' 카테고리를 삭제하시겠습니까?`)) {
-                        onDeleteCategory(cat.id);
-                        alert('삭제되었습니다.');
-                      }
+                      const description = prompt(`'${cat.name}' 프로젝트의 간단한 설명을 입력해 주세요 (선택):`, '') || '';
+                      const updated = categoryService.toggleProjectMode(cat.id, true, description);
+                      onUpdateCategories(updated);
+                      alert(`'${cat.name}' 카테고리가 프로젝트로 전환되었습니다!`);
                     }}
-                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
-                    aria-label="Delete category"
+                    className="btn btn-secondary"
+                    style={{
+                      minHeight: '28px',
+                      height: '28px',
+                      padding: '0 8px',
+                      fontSize: '11px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
                   >
-                    <Trash2 size={16} />
+                    💼 프로젝트 전환
                   </button>
-                )}
+
+                  {cat.isSystem ? (
+                    <span style={{ color: 'var(--text-muted)', padding: '4px' }}>
+                      <Lock size={14} style={{ opacity: 0.5 }} />
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        if (confirm(`'${cat.name}' 카테고리를 삭제하시겠습니까?`)) {
+                          onDeleteCategory(cat.id);
+                          alert('삭제되었습니다.');
+                        }
+                      }}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                      aria-label="Delete category"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
